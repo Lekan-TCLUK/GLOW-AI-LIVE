@@ -1,0 +1,20 @@
+CREATE TABLE glow_journeys (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  journey_id text UNIQUE NOT NULL,
+  session_id text UNIQUE NOT NULL,
+  email text NOT NULL,
+  payment_status text NOT NULL DEFAULT 'pending',
+  stripe_session_id text,
+  plan_name text NOT NULL DEFAULT 'Personal Glow Plan',
+  amount_cents integer NOT NULL DEFAULT 999,
+  initial_analysis_json jsonb NOT NULL,
+  initial_score integer NOT NULL,
+  day30_completed boolean NOT NULL DEFAULT false,
+  day30_analysis_json jsonb,
+  day30_score integer,
+  pdf_url text,
+  email_sent_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  paid_at timestamptz,
+  day30_completed_at timestamptz
+)

@@ -1,4 +1,10 @@
 [ai]
 required = true
-providers = ["openai"]
-pin = "openai"
+
+[[secret]]
+name = "STRIPE_SECRET_KEY"
+expose = true
+
+[[secret]]
+name = "STRIPE_WEBHOOK_SECRET"
+expose = true

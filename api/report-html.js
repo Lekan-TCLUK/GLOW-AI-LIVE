@@ -1,0 +1,12 @@
+import { db } from "hatchable";
+export const access="public";
+export const methods=["GET"];
+function esc(s){return String(s??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+export default async function(req,res){
+ const id=String(req.query?.journey_id||"").trim().toUpperCase();
+ const q=await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[id]); if(!q.rows[0])return res.status(404).send("Glow Journey not found"); const j=q.rows[0];
+ const a=j.initial_analysis_json||{}; const c=a.categories||{}; const names={radiance:"Radiance",hydration_appearance:"Hydration Appearance",evenness:"Evenness",texture:"Texture",under_eye:"Under-Eye Appearance",vitality:"Overall Vitality"};
+ const dims=Object.entries(names).map(([k,n])=>`<tr><td>${n}</td><td>${esc(c[k]?.score||0)}</td></tr>`).join("");
+ res.setHeader("Content-Type","text/html; charset=utf-8");
+ res.send(`<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;color:#191715;background:#f7f2e9;padding:48px}.page{max-width:760px;margin:auto;background:#fffdf9;padding:48px;border:1px solid #ded5c7}.gold{color:#b6924b}.score{font:72px Georgia,serif}.eyebrow{letter-spacing:.12em;font-size:11px;color:#b6924b;font-weight:700}table{width:100%;border-collapse:collapse;margin-top:24px}td{padding:12px;border-bottom:1px solid #ded5c7}h1,h2{font-family:Georgia,serif}small{color:#6d675f}</style></head><body><div class="page"><div class="eyebrow">GLOW AI™ · PERSONAL GLOW PLAN™</div><h1>SEE YOUR GLOW.<br>START YOUR JOURNEY.</h1><p>Glow Journey ID: <b>${esc(j.journey_id)}</b></p><h2>Your Glow Profile</h2><div class="score">${esc(j.initial_score)}<small>/100</small></div><p class="gold"><b>${esc(a.band||"")} ✨</b></p><p>${esc(a.overall_summary||"")}</p><h2>Your Six Glow Dimensions</h2><table>${dims}</table><h2>Your Top 3 Priorities</h2><p>Focus on your three lowest visible appearance dimensions first. Your personalised plan is designed around these priorities.</p><h2>Your Glow Journey</h2><p>Morning routine · Evening routine · 7-Day Glow Reset · 30-Day Glow Journey · Day-30 Glow Re-Check</p><h2>Privacy</h2><p><small>Your selfie is used for the Glow Check and is not used to create a persistent facial profile. This report contains beauty and wellness insights based on visible characteristics and is not a medical assessment.</small></p></div></body></html>`);
+}
