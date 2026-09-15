@@ -1,7 +1,7 @@
 import { ai, db } from "hatchable";
 
 export const access = "public";
-export const methods = ["POST"];
+export const methods = ["POST", "OPTIONS"];
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -34,9 +34,11 @@ export default async function (req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
   const body = req.body || {};
   const imageData = body.imageData;
   const sessionId = String(body.sessionId || crypto.randomUUID());
+
   if (!imageData || typeof imageData !== "string" || !imageData.startsWith("data:image/")) {
     return res.status(400).json({ error: "A valid image is required." });
   }
@@ -74,6 +76,7 @@ export default async function (req, res) {
         ? parsed.categories[key].observations.slice(0, 2).map(String)
         : [];
     }
+
     const overall = Math.round(Object.entries(weights).reduce((sum, [key, weight]) => sum + parsed.categories[key].score * weight, 0));
     const resultData = { ...parsed, overall_score: overall, band: band(overall) };
 
