@@ -1,0 +1,4 @@
+[ai]
+required = true
+providers = ["openai"]
+pin = "openai"
