@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GLOW AI™ — V3 Navigable Prototype</title>
+<title>GLOW AI™ — Personal Glow Journey</title>
 <style>
 :root{--bg:#f7f2e9;--panel:#fffdf9;--ink:#191715;--muted:#6d675f;--gold:#b6924b;--line:#ded5c7;--soft:#ece3d5;--pink:#d98a9a}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
@@ -112,30 +112,31 @@ input{height:56px;width:100%;border:1px solid var(--line);border-radius:9px;back
 <section class="screen" data-id="journey">
  <button class="back" data-back>← BACK</button><div class="eyebrow">YOUR GLOW RE-CHECK</div><h2>30 days later…<br>let's see your glow.</h2><p class="lead">Enter your Journey ID so we can reference your original Glow Profile.</p>
  <label class="muted">GLOW JOURNEY ID</label><input id="journeyId" placeholder="e.g. GJ-8F72K91"><p class="notice">Your Journey ID is in your Glow Plan email.</p>
- <div class="spacer"></div><div class="card">We reference your saved scores — not your original selfie.</div><div style="height:12px"></div><button class="cta" data-next="day30">CONTINUE TO SELFIE</button>
+ <div class="spacer"></div><div class="card">We reference your saved scores — not your original selfie.</div><div style="height:12px"></div><button class="cta" id="loadJourneyBtn">CONTINUE TO SELFIE</button>
 </section>
 
 <section class="screen" data-id="day30">
  <button class="back" data-back>← BACK</button><div class="eyebrow">NEW GLOW SELFIE</div><h2>Let's capture today's<br>glow.</h2><p class="lead">For the fairest comparison, recreate the lighting and angle of your first photo where possible.</p>
- <label class="photo"><div class="face"><span class="eye e1"></span><span class="eye e2"></span><span class="smile"></span></div></label>
- <div class="spacer"></div><button class="cta" data-next="progress">CAPTURE DAY 30 GLOW</button>
- <button class="cta secondary" style="margin-top:8px">UPLOAD A SELFIE</button>
+ <div class="photo" id="day30PhotoBox"><div class="face"><span class="eye e1"></span><span class="eye e2"></span><span class="smile"></span></div></div>
+ <input id="day30File" type="file" accept="image/*" capture="user" style="display:none">
+ <div class="spacer"></div><button class="cta" id="day30Capture">CAPTURE DAY 30 GLOW</button>
+ <button class="cta secondary" id="day30Choose" style="margin-top:8px">UPLOAD A SELFIE</button>
 </section>
 
 <section class="screen" data-id="progress">
  <div class="eyebrow">YOUR GLOW PROGRESS</div><h2>Look how your profile<br>has changed. ✨</h2>
- <div class="grid2" style="margin-top:22px"><div class="card"><label class="muted">STARTING SCORE</label><div class="score" style="font-size:50px">67</div><span class="muted">DAY 0</span></div><div class="card"><label class="muted">NEW SCORE</label><div class="score" style="font-size:50px">74</div><span class="muted">DAY 30</span></div></div>
- <div class="card" style="margin-top:12px;background:var(--soft);border-color:var(--gold)"><div class="eyebrow" style="margin:0">VISIBLE SCORE CHANGE</div><div class="price">+7</div><span class="muted">Higher visible score under the conditions of this assessment.</span></div>
- <div class="spacer"></div><p class="notice">Scores can be influenced by lighting, camera, expression and other image conditions.</p>
+ <div class="grid2" style="margin-top:22px"><div class="card"><label class="muted">STARTING SCORE</label><div class="score" id="startScore" style="font-size:50px">—</div><span class="muted">DAY 0</span></div><div class="card"><label class="muted">NEW SCORE</label><div class="score" id="newScore" style="font-size:50px">—</div><span class="muted">DAY 30</span></div></div>
+ <div class="card" style="margin-top:12px;background:var(--soft);border-color:var(--gold)"><div class="eyebrow" style="margin:0">VISIBLE SCORE CHANGE</div><div class="price" id="scoreChange">—</div><span class="muted">Higher or lower visible score under the conditions of this assessment.</span></div>
+ <div class="spacer"></div><p class="notice">Scores can be influenced by lighting, camera, expression and other image conditions. A score change is not a medical or causal assessment.</p>
  <button class="cta secondary share" id="share">↗ SHARE MY NEW GLOW SCORE</button><button class="cta" id="restart">START MY NEXT GLOW JOURNEY</button>
 </section>
 </main>
 </div>
 <script>
-const API_BASE='https://glow-ai-v01.hatchable.site/api';
+const API_BASE=(window.__HATCHABLE__&&window.__HATCHABLE__.api)||'https://glow-ai-v01.hatchable.site/api';
 const screens=[...document.querySelectorAll('.screen')];
 const order=screens.map(s=>s.dataset.id);
-let current=0, history=[], sessionId=null, analysis=null, photoData=null;
+let current=0, history=[], sessionId=null, analysis=null, photoData=null, journeyId=null, journey=null, day30PhotoData=null;
 const progress=document.getElementById('progress');
 function show(id,push=true){
  const next=order.indexOf(id); if(next<0)return;
@@ -207,6 +208,14 @@ fileInput.onchange=async e=>{
   document.querySelector('#photoBox .face').style.display='none';
  }catch(err){alert(err.message);fileInput.value='';}
 };
+async function loadJourney(id){
+ try{
+  const r=await fetch(API_BASE+'/journey-access?journey_id='+encodeURIComponent(id)); const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||'We could not find that Glow Journey.');
+  journey=data; journeyId=data.journeyId; sessionStorage.setItem('glowJourneyId',journeyId); return data;
+ }catch(e){alert(e.message);return null;}
+}
+
 document.getElementById('pay').onclick=async()=>{
  const email=document.getElementById('email').value.trim(); const err=document.getElementById('emailError');
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.style.display='block';return}
@@ -242,6 +251,31 @@ async function verifyReturnedPayment(){
 }
 
 verifyReturnedPayment();
+document.getElementById('loadJourneyBtn').onclick=async()=>{
+ const id=document.getElementById('journeyId').value.trim().toUpperCase();
+ if(!/^GJ-[A-Z0-9]{8,20}$/.test(id)){alert('Enter a valid Glow Journey ID.');return;}
+ const btn=document.getElementById('loadJourneyBtn');btn.disabled=true;btn.textContent='CHECKING JOURNEY…';
+ const data=await loadJourney(id);btn.disabled=false;btn.textContent='CONTINUE TO SELFIE';
+ if(data){show('day30');}
+};
+
+document.getElementById('day30Choose').onclick=()=>document.getElementById('day30File').click();
+document.getElementById('day30File').onchange=async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{day30PhotoData=await fileToDataUrl(file);const box=document.getElementById('day30PhotoBox');box.style.backgroundImage=`url(${day30PhotoData})`;box.style.backgroundSize='cover';box.style.backgroundPosition='center';const face=box.querySelector('.face');if(face)face.style.display='none';}
+ catch(err){alert(err.message);e.target.value='';}
+};
+document.getElementById('day30Capture').onclick=async()=>{
+ if(!journeyId){const id=document.getElementById('journeyId').value.trim().toUpperCase();const data=await loadJourney(id);if(!data)return;}
+ if(!day30PhotoData){document.getElementById('day30File').click();return;}
+ const btn=document.getElementById('day30Capture');btn.disabled=true;btn.textContent='ANALYSING YOUR GLOW…';
+ try{
+  const r=await fetch(API_BASE+'/day30-analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({journeyId,imageData:day30PhotoData})});
+  const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'We could not analyse your Day-30 photo. Please try again.');
+  setText('#startScore',data.initialScore);setText('#newScore',data.day30Score);setText('#scoreChange',(Number(data.change)>=0?'+':'')+data.change);show('progress');
+ }catch(err){alert(err.message);}finally{btn.disabled=false;btn.textContent='CAPTURE DAY 30 GLOW';}
+};
+
 document.getElementById('share').onclick=async()=>{
  const score=analysis?.overall_score ?? 74; const text='My GLOW Score is '+score+' ✨ What’s yours?';
  try{if(navigator.share)await navigator.share({title:'My GLOW Score',text});else{await navigator.clipboard.writeText(text);alert('Share copy copied to clipboard.')}}catch(e){}
