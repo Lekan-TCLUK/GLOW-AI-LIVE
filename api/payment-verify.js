@@ -54,7 +54,7 @@ export default async function(req, res) {
     await db.query("UPDATE glow_journeys SET payment_status = 'paid', paid_at = COALESCE(paid_at, now()) WHERE journey_id = $1", [journeyId]);
     const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId])).rows[0];
     try { await sendPlanEmail(updated); } catch (mailError) { console.error("Plan email failed", mailError); }
-    return res.json({ paid: true, journeyId, email: updated.email });
+    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl: updated.pdf_url || null });
   } catch (error) {
     console.error("Payment verification error", error);
     return res.status(502).json({ error: "We couldn't verify the payment yet. Please refresh and try again." });

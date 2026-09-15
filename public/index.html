@@ -105,7 +105,7 @@ input{height:56px;width:100%;border:1px solid var(--line);border-radius:9px;back
 <section class="screen" data-id="confirmation">
  <div class="scorewrap"><div class="scorecircle" style="width:100px;height:100px"><span style="font-size:44px;color:var(--gold)">✓</span></div></div>
  <div class="eyebrow" style="text-align:center">YOUR PLAN IS READY</div><h2 style="text-align:center">Your Glow Journey<br>has started. ✨</h2><p class="lead" style="text-align:center">Your personalised plan will be delivered to your email.</p>
- <div class="timeline"><div class="card"><b>NOW</b>Open your Personal Glow Plan™</div><div class="card"><b>DAYS 1–7</b>Complete your Glow Reset</div><div class="card"><b>DAYS 8–30</b>Continue your Glow Journey</div><div class="card"><b>DAY 30</b>Return for your Glow Re-Check</div></div>
+ <div class="timeline"><div class="card"><b>NOW</b>Open your Personal Glow Plan™</div><div class="card"><b>DAYS 1–7</b>Complete your Glow Reset</div><div class="card"><b>DAYS 8–30</b>Continue your Glow Journey</div><div class="card"><b>DAY 30</b>Return for your Glow Re-Check</div></div><div class="card" id="downloadCard" style="display:none;margin-top:12px"><b>YOUR FULL GLOW PLAN</b><p class="muted">Your complete personalised report is ready.</p><a id="downloadReport" class="cta" style="display:grid;place-items:center;text-decoration:none" target="_blank" rel="noopener">DOWNLOAD MY FULL REPORT</a></div>
  <div class="spacer"></div><button class="cta" data-next="journey">CONTINUE MY GLOW JOURNEY</button>
 </section>
 
@@ -243,6 +243,7 @@ async function verifyReturnedPayment(){
   const data=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(data.error||'We could not verify your payment yet.');
   if(data.journeyId)sessionStorage.setItem('glowJourneyId',data.journeyId);
+  if(data.pdfUrl){const card=document.getElementById('downloadCard'),link=document.getElementById('downloadReport');if(link)link.href=data.pdfUrl;if(card)card.style.display='block';}
   const btn=document.querySelector('[data-id="confirmation"] [data-next="journey"]');
   if(btn)btn.dataset.next='journey';
  }catch(e){
@@ -250,6 +251,7 @@ async function verifyReturnedPayment(){
  }
 }
 
+show('landing',false);
 verifyReturnedPayment();
 document.getElementById('loadJourneyBtn').onclick=async()=>{
  const id=document.getElementById('journeyId').value.trim().toUpperCase();
@@ -280,8 +282,7 @@ document.getElementById('share').onclick=async()=>{
  const score=analysis?.overall_score ?? 74; const text='My GLOW Score is '+score+' ✨ What’s yours?';
  try{if(navigator.share)await navigator.share({title:'My GLOW Score',text});else{await navigator.clipboard.writeText(text);alert('Share copy copied to clipboard.')}}catch(e){}
 };
-document.getElementById('restart').onclick=()=>{history=[];sessionId=null;analysis=null;photoData=null;fileInput.value='';show('landing',false)};
-show('landing',false);
+document.getElementById('restart').onclick=()=>{history=[];sessionId=null;analysis=null;photoData=null;journeyId=null;journey=null;day30PhotoData=null;fileInput.value='';document.getElementById('day30File').value='';show('landing',false)};
 </script>
 </body>
 </html>
