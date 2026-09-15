@@ -3,20 +3,221 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GLOW AI — Discover Your Glow</title>
-<meta name="description" content="GLOW AI — Discover what's holding back your glow.">
-<link rel="stylesheet" href="/styles.css">
+<title>GLOW AI™ — V3 Navigable Prototype</title>
+<style>
+:root{--bg:#f7f2e9;--panel:#fffdf9;--ink:#191715;--muted:#6d675f;--gold:#b6924b;--line:#ded5c7;--soft:#ece3d5;--pink:#d98a9a}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+button,input{font:inherit}.app{height:100dvh;min-height:640px;display:flex;flex-direction:column;overflow:hidden}
+.top{height:78px;flex:none;padding:22px max(22px,calc((100vw - 1100px)/2));display:flex;align-items:center;justify-content:space-between;border-top:2px solid var(--line)}
+.logo{font-family:Georgia,serif;font-size:25px}.private{font-size:10px;letter-spacing:.12em;color:var(--muted)}
+.progress{height:3px;background:var(--line);flex:none}.progress i{display:block;height:100%;background:var(--gold);width:0;transition:width .35s}
+main{flex:1;min-height:0;display:flex;justify-content:center;overflow:hidden}
+.screen{width:min(100%,900px);height:100%;padding:22px;display:none;flex-direction:column;overflow:hidden;animation:in .25s ease}
+.screen.active{display:flex}@keyframes in{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--gold);margin:18px 0 12px}
+h1,h2{font-family:Georgia,serif;margin:0;line-height:1.08;font-weight:700}h1{font-size:clamp(38px,10vw,58px)}h2{font-size:clamp(29px,8vw,42px)}
+.lead{font-size:16px;line-height:1.45;color:var(--muted);max-width:650px;margin:20px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.row{display:flex;gap:12px;align-items:center}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.spacer{flex:1;min-height:18px}.cta{width:100%;height:56px;border:0;border-radius:10px;background:var(--ink);color:#fff;font-weight:700;letter-spacing:.02em;cursor:pointer}.secondary{background:var(--panel);color:var(--ink);border:1px solid var(--line)}.cta:active{transform:scale(.99)}
+.back{border:0;background:transparent;padding:0;color:var(--muted);font-size:10px;letter-spacing:.08em;text-align:left;cursor:pointer;margin-bottom:8px}
+.pill{display:inline-flex;padding:9px 14px;border-radius:20px;background:var(--soft);font-size:11px;color:var(--muted)}
+.checks{display:grid;gap:14px;margin-top:18px}.check{display:flex;gap:12px;align-items:center;font-size:14px}.tick{width:24px;height:24px;border-radius:50%;background:var(--soft);display:grid;place-items:center;color:var(--gold);font-weight:700}
+.photo{height:min(42vh,300px);background:#ddd7cd;border:1px solid var(--line);border-radius:16px;display:grid;place-items:center;margin:18px 34px}.face{width:150px;height:180px;border-radius:48% 48% 45% 45%;background:#eee9e1;border:3px solid #c9c0b3;position:relative}.eye{position:absolute;width:16px;height:16px;border-radius:50%;background:#9b9388;top:70px}.e1{left:40px}.e2{right:40px}.smile{position:absolute;width:50px;height:25px;border-bottom:3px solid #9b9388;border-radius:0 0 50px 50px;left:47px;top:100px}
+.analysis{text-align:center;align-items:center;justify-content:center}.ring{width:190px;height:190px;border-radius:50%;border:8px solid var(--soft);border-top-color:var(--gold);display:grid;place-items:center;animation:spin 1.5s linear infinite;margin:32px 0}@keyframes spin{to{transform:rotate(360deg)}}.ring span{font-size:12px;font-weight:700;animation:spin 1.5s linear infinite reverse}
+.scorewrap{display:flex;flex-direction:column;align-items:center}.scorecircle{width:190px;height:190px;border-radius:50%;background:var(--panel);border:6px solid var(--gold);display:grid;place-items:center;margin:12px 0}.score{font-family:Georgia,serif;font-size:74px}.score small{font-family:Arial;font-size:11px;color:var(--muted)}.dims{margin-top:12px}.dim{padding:12px}.dim strong{font-family:Georgia,serif;font-size:24px;display:block;margin-top:3px}.dim label{font-size:10px;color:var(--muted);letter-spacing:.06em}
+.priority{display:grid;gap:10px;margin-top:18px}.priority .card{display:flex;gap:12px;align-items:center}.num{color:var(--gold);font-weight:700}
+.price{font-family:Georgia,serif;font-size:50px}.features{display:grid;gap:11px;margin:18px 0}.feature{font-size:14px}.feature b{color:var(--gold);margin-right:8px}
+input{height:56px;width:100%;border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:0 16px;color:var(--ink);outline:none}input:focus{border-color:var(--gold)}
+.timeline{display:grid;gap:9px;margin-top:18px}.timeline .card{padding:12px}.timeline b{font-size:10px;color:var(--gold);margin-right:10px}.muted{color:var(--muted);font-size:12px}
+.notice{font-size:10px;color:var(--muted);line-height:1.4}.error{color:#9b4f4f;font-size:12px;margin-top:8px;display:none}
+.share{margin-bottom:10px}
+@media(min-width:700px){.screen{padding:28px 60px}.grid2{grid-template-columns:repeat(3,1fr)}.photo{margin-left:160px;margin-right:160px}}
+@media(max-height:700px){.top{height:62px;padding-top:15px;padding-bottom:15px}.screen{padding-top:12px}.eyebrow{margin-top:8px}.lead{margin:12px 0}.photo{height:220px}.scorecircle{width:150px;height:150px}.score{font-size:58px}.cta{height:50px}}
+</style>
 </head>
 <body>
-<main class="app">
-<section class="screen hero active" id="screen-1"><div class="hero-art"></div><div class="brand">GLOW <span>AI</span></div><div class="hero-copy"><p class="eyebrow">YOUR PERSONAL GLOW CHECK</p><h1>Discover what's holding back your <em>glow.</em></h1><p>Your personalised Glow Score and practical recommendations, based on visible facial characteristics.</p><button class="primary" data-next="screen-2">✨ Check My Glow</button><small>Free Glow Score · No app to download</small></div></section>
-<section class="screen" id="screen-2"><header><button class="back" data-back="screen-1">←</button><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">STEP 1 OF 3</p><h2>Let's see your glow ✨</h2><p>Upload a clear, front-facing photo so GLOW AI can analyse visible characteristics and create your Glow Profile.</p><div class="tips"><div>✓ Face the camera directly</div><div>✓ Use natural or even lighting</div><div>✓ Avoid filters and sunglasses</div><div>✓ Keep your face clearly visible</div></div><label class="upload"><input id="photoInput" type="file" accept="image/*" capture="user"><span class="upload-icon">📸</span><strong>Upload a photo</strong><small>Tap to choose or take a selfie</small></label><p class="disclaimer">GLOW AI provides beauty and wellness insights based on visible characteristics. It does not diagnose medical conditions or determine nutritional or hormonal deficiencies.</p></div></section>
-<section class="screen" id="screen-3"><header><button class="back" data-back="screen-2">←</button><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">PHOTO CHECK</p><h2>Looking good. 👀</h2><div class="photo-wrap"><img id="preview" alt="Uploaded selfie preview"></div><p>Make sure your face is clearly visible and you're happy with the image.</p><button class="primary" id="analyseBtn">✨ Analyse My Glow</button><button class="secondary" data-back="screen-2">Retake Photo</button></div></section>
-<section class="screen analysis" id="screen-4"><div class="analysis-inner"><div class="brand">GLOW <span>AI</span></div><div class="pulse">✦</div><p class="eyebrow">AI ANALYSIS</p><h2>Analysing your glow...</h2><div class="progress"><div id="progressBar"></div></div><div id="analysisSteps" class="steps"></div></div></section>
-<section class="screen result" id="screen-5"><header><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">YOUR RESULT</p><h2>Your Glow Score ✨</h2><div class="score-ring" id="scoreRing"><div><strong id="score">--</strong><span>/100</span></div></div><div class="band" id="band"></div><div class="bars" id="bars"></div><div class="notice"><strong id="strongest"></strong><p id="strongestText"></p></div><div class="notice priority"><strong>Your biggest opportunity: <span id="biggest"></span></strong><p id="biggestText"></p></div><div class="locked"><div class="lock">🔒</div><h3>Your full Glow Plan is ready.</h3><p>We've identified 7 personalised recommendations for you.</p><button class="primary" data-next="screen-6">Unlock My Full Glow Plan · $5</button><small>One-time payment · Instant access</small></div></div></section>
-<section class="screen" id="screen-6"><header><button class="back" data-back="screen-5">←</button><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">FULL GLOW PLAN</p><h2>Ready when you are. ✨</h2><p>Your complete personalised plan includes:</p><div class="benefits"><div>✨ Complete Glow Analysis</div><div>💧 Personalised Glow Priorities</div><div>🌿 7-Day Glow Reset</div><div>✨ 30-Day Glow Roadmap</div><div>🥗 Lifestyle & wellness tips</div></div><div class="price">$5 <span>one-time</span></div><button class="primary" id="unlockBtn">Unlock My Glow Plan — $5</button><p class="demo-note">Prototype mode: payment is simulated.</p></div></section>
-<section class="screen result" id="screen-7"><header><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">YOUR PERSONAL GLOW PROFILE</p><h2>Here's your plan. ✨</h2><div class="mini-score"><strong id="fullScore">--</strong><span>/100</span></div><div id="fullCategories"></div><h3>Your Top 3 Glow Priorities</h3><div id="priorities"></div><button class="primary" data-next="screen-8">Show Me My 7-Day Reset →</button></div></section>
-<section class="screen" id="screen-8"><header><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">YOUR 7-DAY RESET</p><h2>Start small. Glow consistently. ✨</h2><div class="day"><strong>DAY 1 · HYDRATE</strong><p>Focus on consistent hydration and a simple skin-support routine.</p></div><div class="day"><strong>DAY 2 · NOURISH</strong><p>Prioritise balanced, nutrient-rich meals and healthy fats.</p></div><div class="day"><strong>DAY 3 · RESTORE</strong><p>Make sleep and recovery part of your glow routine.</p></div><div class="day"><strong>DAYS 4–7 · BUILD</strong><p>Repeat the habits that feel sustainable and keep your routine consistent.</p></div><button class="primary" data-next="screen-9">Start My 30-Day Journey →</button></div></section>
-<section class="screen" id="screen-9"><header><div class="brand">GLOW <span>AI</span></div></header><div class="content"><p class="eyebrow">30-DAY GLOW JOURNEY</p><h2>Your month starts here.</h2><div class="journey"><div><b>WEEK 1</b><span>RESET</span></div><div><b>WEEK 2</b><span>NOURISH</span></div><div><b>WEEK 3</b><span>RESTORE</span></div><div><b>WEEK 4</b><span>GLOW</span></div></div><button class="primary" data-next="screen-10">Continue →</button></div></section>
-<section class="screen" id="screen-10"><header><div class="brand">GLOW <span>AI</span></div></header><div class="content final"><p class="eyebrow">GLOW FROM WITHIN</p><h2>Your glow doesn't start with your skin. ✨</h2><p>The way we look on the outside is only part of the picture. Explore our educational guide to healthy ageing, cellular energy and NAD.</p><button class="primary" id="nadBtn">Explore NAD →</button><small>Educational information only. This is not medical advice.</small></div></section>
-</main><script src="/app.js"></script></body></html>
+<div class="app">
+<header class="top"><div class="logo">GLOW AI™</div><div class="private">PRIVATE BY DESIGN</div></header>
+<div class="progress"><i id="progress"></i></div>
+<main id="main">
+
+<section class="screen active" data-id="landing">
+ <div class="eyebrow">YOUR PERSONAL GLOW CHECK</div><span class="pill">SEE YOUR GLOW. START YOUR JOURNEY.</span>
+ <div style="height:20px"></div><h1>What if you<br>could see what's<br>holding back<br>your glow?</h1>
+ <div class="spacer"></div><div class="card" style="text-align:center;margin-bottom:10px">✨ 14 women are exploring their Glow Check today</div>
+ <button class="cta" data-next="guidance">CHECK MY GLOW</button>
+</section>
+
+<section class="screen" data-id="guidance">
+ <button class="back" data-back>← BACK</button><div class="eyebrow">BEFORE YOU BEGIN</div><h2>Let's get your<br>best Glow Check.</h2>
+ <p class="lead">A clear, front-facing photo gives us the best basis for a useful visible appearance analysis.</p>
+ <div class="checks">
+  <div class="check"><span class="tick">✓</span>Face the camera directly</div><div class="check"><span class="tick">✓</span>Use even, natural lighting</div><div class="check"><span class="tick">✓</span>Keep your face unobstructed</div><div class="check"><span class="tick">✓</span>Avoid beauty filters</div>
+ </div>
+ <div class="spacer"></div><p class="notice">Your image is processed for this Glow Check. It is not used to create a persistent facial profile.</p>
+ <button class="cta" data-next="review">TAKE / UPLOAD MY PHOTO</button>
+</section>
+
+<section class="screen" data-id="review">
+ <button class="back" data-back>← BACK</button><div class="eyebrow">YOUR PHOTO</div><h2>Does this photo<br>look clear?</h2>
+ <p class="lead">Centre your face and make sure the image is bright enough.</p>
+ <label class="photo" id="photoBox"><div class="face"><span class="eye e1"></span><span class="eye e2"></span><span class="smile"></span></div></label>
+ <input id="file" type="file" accept="image/*" style="display:none">
+ <div class="grid2" style="margin-bottom:12px"><div class="card">✓ Face visible</div><div class="card">✓ Good lighting</div><div class="card">✓ Single person</div><div class="card">✓ No beauty filter</div></div>
+ <div class="spacer"></div><button class="cta" data-next="analysis">USE THIS PHOTO</button>
+ <button class="cta secondary" style="margin-top:8px" id="choose">CHOOSE ANOTHER</button>
+</section>
+
+<section class="screen analysis" data-id="analysis">
+ <div class="eyebrow">YOUR GLOW CHECK</div><h2>Reading your<br>visible glow…</h2>
+ <div class="ring"><span>GLOW</span></div><p class="lead">We’re assessing six visible appearance dimensions and preparing your result.</p><div class="spacer"></div><p class="notice">Beauty and wellness insights only. No medical diagnosis.</p>
+</section>
+
+<section class="screen" data-id="score">
+ <div class="eyebrow">YOUR GLOW SCORE™</div><div class="scorewrap"><div class="scorecircle"><div><span class="score">67</span><small>/ 100</small></div></div><span class="pill">DEVELOPING GLOW ✨</span></div>
+ <div class="grid2 dims">
+  <div class="card dim"><label>RADIANCE</label><strong>64</strong></div><div class="card dim"><label>HYDRATION</label><strong>68</strong></div><div class="card dim"><label>EVENNESS</label><strong>73</strong></div><div class="card dim"><label>TEXTURE</label><strong>70</strong></div><div class="card dim"><label>UNDER-EYE</label><strong>58</strong></div><div class="card dim"><label>VITALITY</label><strong>67</strong></div>
+ </div><div class="spacer"></div><button class="cta" data-next="insight">SEE MY GLOW INSIGHT</button>
+</section>
+
+<section class="screen" data-id="insight">
+ <div class="eyebrow">YOUR GLOW PROFILE</div><h2>You don't need to<br>change everything.</h2><p class="lead">Focus on the areas where your Glow Check shows the clearest opportunities.</p>
+ <div class="card"><div class="eyebrow" style="margin-top:0">YOUR DETAILED INSIGHT</div><h3 style="font-family:Georgia,serif;font-size:22px;margin:0 0 10px">Evenness · 73</h3><p class="muted">Your complexion appears relatively balanced and even overall. This is one of the stronger visible characteristics in your Glow Profile.</p></div>
+ <div class="priority"><div class="card"><span class="num">1.</span>Under-Eye Appearance</div><div class="card"><span class="num">2.</span>Radiance</div><div class="card"><span class="num">3.</span>Overall Vitality</div></div>
+ <div class="spacer"></div><button class="cta" data-next="plan">SEE MY PERSONAL GLOW PLAN</button>
+</section>
+
+<section class="screen" data-id="plan">
+ <div class="eyebrow">PERSONAL GLOW PLAN™</div><h2>Turn your insight<br>into action.</h2><p class="lead">Your one-time plan turns your Glow Profile into a practical 30-day journey.</p>
+ <div class="features"><div class="feature"><b>✦</b>Complete Glow Analysis</div><div class="feature"><b>✦</b>Personalised Top 3 Priorities</div><div class="feature"><b>✦</b>Morning + Evening Glow Routines</div><div class="feature"><b>✦</b>7-Day Glow Reset</div><div class="feature"><b>✦</b>30-Day Glow Journey</div><div class="feature"><b>✦</b>One included Day-30 Glow Re-Check</div></div>
+ <div class="card row"><div><div class="eyebrow" style="margin:0">ONE-TIME PAYMENT</div><div class="price">$9.99</div></div><span class="muted">No subscription</span></div>
+ <div class="spacer"></div><button class="cta" data-next="checkout">GET MY GLOW PLAN</button>
+</section>
+
+<section class="screen" data-id="checkout">
+ <button class="back" data-back>← BACK</button><div class="eyebrow">YOUR GLOW PLAN</div><h2>Almost there.</h2><p class="lead">Enter your email so we can deliver your personalised Glow Plan.</p>
+ <label class="muted">EMAIL ADDRESS</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email"><div id="emailError" class="error">Please enter a valid email address.</div>
+ <div class="spacer"></div><div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>Personal Glow Plan™</b><b>$9.99</b></div><p class="muted">One-time payment · Day-30 Re-Check included</p></div>
+ <p class="notice">Secure checkout · Essential journey emails only.</p><button class="cta" id="pay">PAY $9.99 & GET MY PLAN</button>
+</section>
+
+<section class="screen" data-id="confirmation">
+ <div class="scorewrap"><div class="scorecircle" style="width:100px;height:100px"><span style="font-size:44px;color:var(--gold)">✓</span></div></div>
+ <div class="eyebrow" style="text-align:center">YOUR PLAN IS READY</div><h2 style="text-align:center">Your Glow Journey<br>has started. ✨</h2><p class="lead" style="text-align:center">Your personalised plan will be delivered to your email.</p>
+ <div class="timeline"><div class="card"><b>NOW</b>Open your Personal Glow Plan™</div><div class="card"><b>DAYS 1–7</b>Complete your Glow Reset</div><div class="card"><b>DAYS 8–30</b>Continue your Glow Journey</div><div class="card"><b>DAY 30</b>Return for your Glow Re-Check</div></div>
+ <div class="spacer"></div><button class="cta" data-next="journey">CONTINUE MY GLOW JOURNEY</button>
+</section>
+
+<section class="screen" data-id="journey">
+ <button class="back" data-back>← BACK</button><div class="eyebrow">YOUR GLOW RE-CHECK</div><h2>30 days later…<br>let's see your glow.</h2><p class="lead">Enter your Journey ID so we can reference your original Glow Profile.</p>
+ <label class="muted">GLOW JOURNEY ID</label><input id="journeyId" placeholder="e.g. GJ-8F72K91"><p class="notice">Your Journey ID is in your Glow Plan email.</p>
+ <div class="spacer"></div><div class="card">We reference your saved scores — not your original selfie.</div><div style="height:12px"></div><button class="cta" data-next="day30">CONTINUE TO SELFIE</button>
+</section>
+
+<section class="screen" data-id="day30">
+ <button class="back" data-back>← BACK</button><div class="eyebrow">NEW GLOW SELFIE</div><h2>Let's capture today's<br>glow.</h2><p class="lead">For the fairest comparison, recreate the lighting and angle of your first photo where possible.</p>
+ <label class="photo"><div class="face"><span class="eye e1"></span><span class="eye e2"></span><span class="smile"></span></div></label>
+ <div class="spacer"></div><button class="cta" data-next="progress">CAPTURE DAY 30 GLOW</button>
+ <button class="cta secondary" style="margin-top:8px">UPLOAD A SELFIE</button>
+</section>
+
+<section class="screen" data-id="progress">
+ <div class="eyebrow">YOUR GLOW PROGRESS</div><h2>Look how your profile<br>has changed. ✨</h2>
+ <div class="grid2" style="margin-top:22px"><div class="card"><label class="muted">STARTING SCORE</label><div class="score" style="font-size:50px">67</div><span class="muted">DAY 0</span></div><div class="card"><label class="muted">NEW SCORE</label><div class="score" style="font-size:50px">74</div><span class="muted">DAY 30</span></div></div>
+ <div class="card" style="margin-top:12px;background:var(--soft);border-color:var(--gold)"><div class="eyebrow" style="margin:0">VISIBLE SCORE CHANGE</div><div class="price">+7</div><span class="muted">Higher visible score under the conditions of this assessment.</span></div>
+ <div class="spacer"></div><p class="notice">Scores can be influenced by lighting, camera, expression and other image conditions.</p>
+ <button class="cta secondary share" id="share">↗ SHARE MY NEW GLOW SCORE</button><button class="cta" id="restart">START MY NEXT GLOW JOURNEY</button>
+</section>
+</main>
+</div>
+<script>
+const API_BASE='https://glow-ai-v01.hatchable.site/api';
+const screens=[...document.querySelectorAll('.screen')];
+const order=screens.map(s=>s.dataset.id);
+let current=0, history=[], sessionId=null, analysis=null, photoData=null;
+const progress=document.getElementById('progress');
+function show(id,push=true){
+ const next=order.indexOf(id); if(next<0)return;
+ if(push && next!==current) history.push(current);
+ current=next;
+ screens.forEach((s,i)=>s.classList.toggle('active',i===current));
+ progress.style.width=((current/(order.length-1))*100)+'%';
+ window.scrollTo(0,0);
+}
+function setText(sel,text){const el=document.querySelector(sel);if(el)el.textContent=text;}
+function updateResults(a){
+ analysis=a;
+ setText('.scorecircle .score',a.overall_score);
+ const pill=document.querySelector('[data-id="score"] .scorewrap .pill'); if(pill)pill.textContent=(a.band||'YOUR GLOW')+' ✨';
+ const map=[['radiance','RADIANCE'],['hydration_appearance','HYDRATION'],['evenness','EVENNESS'],['texture','TEXTURE'],['under_eye','UNDER-EYE'],['vitality','VITALITY']];
+ const cards=[...document.querySelectorAll('[data-id="score"] .dim strong')];
+ map.forEach(([key],i)=>{if(cards[i])cards[i].textContent=a.categories[key].score});
+ const ranked=map.map(([key,label])=>({key,label,score:a.categories[key].score})).sort((x,y)=>x.score-y.score || x.label.localeCompare(y.label));
+ const pri=[...document.querySelectorAll('[data-id="insight"] .priority .card')];
+ ranked.slice(0,3).forEach((r,i)=>{if(pri[i])pri[i].innerHTML='<span class="num">'+(i+1)+'.</span>'+r.label});
+ const detail=ranked[0];
+ const detailTitle=document.querySelector('[data-id="insight"] h3');
+ const detailText=document.querySelector('[data-id="insight"] .card .muted');
+ if(detailTitle)detailTitle.textContent=detail.label+' · '+detail.score;
+ if(detailText)detailText.textContent=(a.categories[detail.key].observations||[]).join(' ');
+}
+async function fileToDataUrl(file){
+ if(!file || !file.type.startsWith('image/')) throw new Error('Please choose an image file.');
+ if(file.size>12*1024*1024) throw new Error('That photo is too large. Please choose a smaller image.');
+ const src=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Could not read that photo.'));r.readAsDataURL(file)});
+ const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(new Error('That image could not be read.'));i.src=src});
+ const max=1600, scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+ const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(img.naturalWidth*scale)); c.height=Math.max(1,Math.round(img.naturalHeight*scale));
+ c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+ return c.toDataURL('image/jpeg',0.86);
+}
+async function analyzePhoto(){
+ if(!photoData){show('review',false);return}
+ show('analysis');
+ try{
+  const r=await fetch(API_BASE+'/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageData:photoData,sessionId:sessionId||undefined})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error||'We could not analyse that photo. Please try another one.');
+  sessionId=data.sessionId; updateResults(data.analysis); show('score');
+ }catch(err){
+  const msg=err.message||'We could not analyse that photo. Please try again.';
+  alert(msg); show('review',false);
+ }
+}
+document.addEventListener('click',e=>{
+ const next=e.target.closest('[data-next]');
+ if(next){
+  const id=next.dataset.next;
+  if(id==='analysis'){analyzePhoto();return;}
+  show(id);
+ }
+ const back=e.target.closest('[data-back]');
+ if(back){const prev=history.pop();if(prev!==undefined){current=prev;screens.forEach((s,i)=>s.classList.toggle('active',i===current));progress.style.width=((current/(order.length-1))*100)+'%';}}
+});
+const fileInput=document.getElementById('file');
+document.getElementById('choose').onclick=()=>fileInput.click();
+fileInput.onchange=async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+  photoData=await fileToDataUrl(file);
+  document.getElementById('photoBox').style.backgroundImage=`url(${photoData})`;
+  document.getElementById('photoBox').style.backgroundSize='cover';
+  document.getElementById('photoBox').style.backgroundPosition='center';
+  document.querySelector('#photoBox .face').style.display='none';
+ }catch(err){alert(err.message);fileInput.value='';}
+};
+document.getElementById('pay').onclick=()=>{
+ const email=document.getElementById('email').value.trim(); const err=document.getElementById('emailError');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.style.display='block';return}
+ err.style.display='none'; show('confirmation');
+};
+document.getElementById('share').onclick=async()=>{
+ const score=analysis?.overall_score ?? 74; const text='My GLOW Score is '+score+' ✨ What’s yours?';
+ try{if(navigator.share)await navigator.share({title:'My GLOW Score',text});else{await navigator.clipboard.writeText(text);alert('Share copy copied to clipboard.')}}catch(e){}
+};
+document.getElementById('restart').onclick=()=>{history=[];sessionId=null;analysis=null;photoData=null;fileInput.value='';show('landing',false)};
+show('landing',false);
+</script>
+</body>
+</html>
