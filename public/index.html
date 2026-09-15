@@ -207,11 +207,41 @@ fileInput.onchange=async e=>{
   document.querySelector('#photoBox .face').style.display='none';
  }catch(err){alert(err.message);fileInput.value='';}
 };
-document.getElementById('pay').onclick=()=>{
+document.getElementById('pay').onclick=async()=>{
  const email=document.getElementById('email').value.trim(); const err=document.getElementById('emailError');
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.style.display='block';return}
- err.style.display='none'; show('confirmation');
+ if(!sessionId){alert('Your Glow Check session has expired. Please run your Glow Check again.');show('landing',false);return}
+ err.style.display='none';
+ const btn=document.getElementById('pay'); btn.disabled=true; btn.textContent='OPENING SECURE CHECKOUT…';
+ try{
+  const r=await fetch(API_BASE+'/checkout-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,sessionId,returnUrl:window.location.href.split('?')[0]})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||'We could not start secure checkout. Please try again.');
+  if(data.journeyId)sessionStorage.setItem('glowJourneyId',data.journeyId);
+  if(data.checkoutUrl){window.location.href=data.checkoutUrl;return;}
+  if(data.alreadyPaid){show('confirmation');return;}
+  throw new Error('Secure checkout was not returned. Please try again.');
+ }catch(e){alert(e.message||'We could not start secure checkout. Please try again.');}
+ finally{btn.disabled=false;btn.textContent='PAY $9.99 & GET MY PLAN';}
 };
+
+async function verifyReturnedPayment(){
+ const params=new URLSearchParams(window.location.search); const payment=params.get('payment'); const stripeSession=params.get('session_id');
+ if(payment!=='success' || !stripeSession)return;
+ show('confirmation',false);
+ try{
+  const r=await fetch(API_BASE+'/payment-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:stripeSession})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||'We could not verify your payment yet.');
+  if(data.journeyId)sessionStorage.setItem('glowJourneyId',data.journeyId);
+  const btn=document.querySelector('[data-id="confirmation"] [data-next="journey"]');
+  if(btn)btn.dataset.next='journey';
+ }catch(e){
+  alert(e.message||'We could not verify your payment yet. Please refresh in a moment.');
+ }
+}
+
+verifyReturnedPayment();
 document.getElementById('share').onclick=async()=>{
  const score=analysis?.overall_score ?? 74; const text='My GLOW Score is '+score+' ✨ What’s yours?';
  try{if(navigator.share)await navigator.share({title:'My GLOW Score',text});else{await navigator.clipboard.writeText(text);alert('Share copy copied to clipboard.')}}catch(e){}
