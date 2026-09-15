@@ -3,13 +3,19 @@ import { ai, db } from "hatchable";
 export const access = "public";
 export const methods = ["POST"];
 
+function cors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+}
+
 const weights = {
-  radiance: 0.20,
-  hydration_appearance: 0.15,
-  evenness: 0.15,
-  texture: 0.15,
-  under_eye: 0.15,
-  vitality: 0.20
+  radiance: 1 / 6,
+  hydration_appearance: 1 / 6,
+  evenness: 1 / 6,
+  texture: 1 / 6,
+  under_eye: 1 / 6,
+  vitality: 1 / 6
 };
 
 function band(score) {
@@ -25,6 +31,8 @@ function clamp(n) {
 }
 
 export default async function (req, res) {
+  cors(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const body = req.body || {};
   const imageData = body.imageData;
