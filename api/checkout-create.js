@@ -19,7 +19,7 @@ function safeReturnUrl(value) {
   try {
     const u = new URL(String(value || ""));
     if (u.protocol !== "https:") return "https://glow-ai-v3-connected-hatchable.vercel.app/";
-    if (u.hostname.endsWith(".vercel.app") || u.hostname === "glowai.com") return u.origin + "/";
+    if (u.hostname.endsWith(".vercel.app") || u.hostname === "glowai.com" || u.hostname.endsWith(".hatchable.site")) return u.origin + "/";
   } catch {}
   return "https://glow-ai-v3-connected-hatchable.vercel.app/";
 }

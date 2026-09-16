@@ -25,6 +25,7 @@ async function sendPlanEmail(journey) {
     html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#191715"><h1 style="font-family:Georgia,serif">Your Glow Journey has started. ✨</h1><p>Your personalised <b>Personal Glow Plan™</b> is ready.</p><p><b>Glow Journey ID:</b> ${esc(journey.journey_id)}</p><p>Keep this ID safe. You'll use it for your Day-30 Glow Re-Check.</p><p><a href="${pdf}" style="display:inline-block;padding:14px 20px;background:#191715;color:#fff;text-decoration:none;border-radius:8px">OPEN MY GLOW PLAN</a></p><p style="font-size:12px;color:#6d675f">Your plan is a beauty and wellness resource based on visible appearance characteristics. It is not a medical assessment.</p></div>`
   });
   await db.query("UPDATE glow_journeys SET email_sent_at = now() WHERE journey_id = $1", [journey.journey_id]);
+  return { sent: true, pdfUrl: pdf };
 }
 
 async function activateJourney(session) {

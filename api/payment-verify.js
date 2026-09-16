@@ -28,7 +28,7 @@ async function ensurePdf(journey) {
 }
 
 async function sendPlanEmail(journey) {
-  if (journey.email_sent_at) return;
+  if (journey.email_sent_at) return { sent: true, pdfUrl: journey.pdf_url || null };
   const pdf = await ensurePdf(journey);
   await email.send({
     to: journey.email,
@@ -36,6 +36,7 @@ async function sendPlanEmail(journey) {
     html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#191715"><h1 style="font-family:Georgia,serif">Your Glow Journey has started. ✨</h1><p>Your personalised <b>Personal Glow Plan™</b> is ready.</p><p><b>Glow Journey ID:</b> ${esc(journey.journey_id)}</p><p>Keep this ID safe. You'll use it for your Day-30 Glow Re-Check.</p><p><a href="${pdf}" style="display:inline-block;padding:14px 20px;background:#191715;color:#fff;text-decoration:none;border-radius:8px">OPEN MY GLOW PLAN</a></p><p style="font-size:12px;color:#6d675f">Your plan is a beauty and wellness resource based on visible appearance characteristics. It is not a medical assessment.</p></div>`
   });
   await db.query("UPDATE glow_journeys SET email_sent_at = now() WHERE journey_id = $1", [journey.journey_id]);
+  return { sent: true, pdfUrl: pdf };
 }
 
 export default async function(req, res) {
@@ -53,8 +54,18 @@ export default async function(req, res) {
     if (!found.rows[0]) return res.status(404).json({ error: "Glow Journey could not be found." });
     await db.query("UPDATE glow_journeys SET payment_status = 'paid', paid_at = COALESCE(paid_at, now()) WHERE journey_id = $1", [journeyId]);
     const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId])).rows[0];
-    try { await sendPlanEmail(updated); } catch (mailError) { console.error("Plan email failed", mailError); }
-    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl: updated.pdf_url || null });
+    let emailSent = Boolean(updated.email_sent_at);
+    let pdfUrl = updated.pdf_url || null;
+    let emailError = null;
+    try {
+      const delivery = await sendPlanEmail(updated);
+      emailSent = Boolean(delivery?.sent);
+      pdfUrl = delivery?.pdfUrl || pdfUrl;
+    } catch (mailError) {
+      emailError = String(mailError?.message || mailError);
+      console.error("Plan email failed", mailError);
+    }
+    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl, emailSent, emailError });
   } catch (error) {
     console.error("Payment verification error", error);
     return res.status(502).json({ error: "We couldn't verify the payment yet. Please refresh and try again." });
