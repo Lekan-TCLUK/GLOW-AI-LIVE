@@ -10,5 +10,5 @@ export default async function(req,res){
   if(!q.rows[0]) return res.status(404).json({error:"We couldn't find that Glow Journey ID."});
   const j=q.rows[0];
   if(j.payment_status!=="paid") return res.status(402).json({error:"This Glow Journey has not been completed as a paid plan."});
-  return res.json({journeyId:j.journey_id,initialScore:j.initial_score,initialAnalysis:j.initial_analysis_json,day30Completed:j.day30_completed,day30Score:j.day30_score,day30Analysis:j.day30_analysis_json});
+  return res.json({journeyId:j.journey_id,email:j.email,initialScore:j.initial_score,initialAnalysis:j.initial_analysis_json,day30Completed:j.day30_completed,day30Score:j.day30_score,day30Analysis:j.day30_analysis_json,pdfUrl:j.pdf_url||null,emailSent:Boolean(j.email_sent_at)});
 }
