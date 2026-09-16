@@ -33,9 +33,14 @@ export default async function(req, res) {
   if (!/^\S+@\S+\.\S+$/.test(String(email || ""))) return res.status(400).json({ error: "A valid email is required." });
   if (!sessionId) return res.status(400).json({ error: "Glow session is required." });
 
-  const existing = await db.query("SELECT journey_id, payment_status, stripe_session_id FROM glow_journeys WHERE session_id = $1 LIMIT 1", [String(sessionId)]);
+  const existing = await db.query("SELECT journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE session_id = $1 LIMIT 1", [String(sessionId)]);
   if (existing.rows[0]?.payment_status === "paid" && existing.rows[0]?.stripe_session_id) {
-    return res.json({ alreadyPaid: true, journeyId: existing.rows[0].journey_id });
+    return res.json({
+      alreadyPaid: true,
+      journeyId: existing.rows[0].journey_id,
+      pdfUrl: existing.rows[0].pdf_url || null,
+      emailSent: !!existing.rows[0].email_sent_at
+    });
   }
 
   const analysis = await db.query("SELECT analysis_json, overall_score FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1", [String(sessionId)]);
