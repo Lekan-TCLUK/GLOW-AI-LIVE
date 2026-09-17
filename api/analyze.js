@@ -89,6 +89,31 @@ export default async function (req, res) {
     return res.status(413).json({ error: "Image is too large. Please use a smaller photo." });
   }
 
+  // A session that already owns a Journey has an immutable Day-0 snapshot.
+  // Return that snapshot instead of creating a second customer-facing Day-0
+  // analysis that could diverge from the Journey, PDF or future Day-30 baseline.
+  const existingJourney = await db.query(
+    "SELECT journey_id, initial_assessment_id, initial_analysis_json, initial_score FROM glow_journeys WHERE session_id = $1 LIMIT 1",
+    [sessionId]
+  );
+  if (existingJourney.rows[0]) {
+    const j = existingJourney.rows[0];
+    return res.json({
+      sessionId,
+      assessmentId: j.initial_assessment_id || null,
+      journeyId: j.journey_id,
+      analysis: j.initial_analysis_json,
+      calibration_version: j.initial_analysis_json?.calibration_version || CALIBRATION_VERSION,
+      calibration_status: CALIBRATION_STATUS,
+      quality_gate_version: "quality-gate-v1",
+      vision_version: j.initial_analysis_json?.observation_version || "vision-v1",
+      scoring_version: j.initial_analysis_json?.scoring_version || ENGINE_VERSION,
+      ranking_version: j.initial_analysis_json?.ranking_version || RANKING_ENGINE_VERSION,
+      archetype_engine_version: j.initial_analysis_json?.archetype_engine_version || ARCHETYPE_ENGINE_VERSION,
+      continuity: true
+    });
+  }
+
   if (idempotencyKey) {
     try {
       const existing = await db.query(

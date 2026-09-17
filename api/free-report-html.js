@@ -6,12 +6,29 @@ function esc(s){return String(s??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&l
 const names={radiance:"Radiance",hydration_appearance:"Hydration Appearance",evenness:"Evenness",texture:"Texture",under_eye:"Under-Eye Appearance",vitality:"Overall Vitality"};
 const observations={radiance:"Visible luminosity and apparent light reflection.",hydration_appearance:"Visible plumpness, suppleness, softness and surface freshness.",evenness:"Visible consistency of complexion tone.",texture:"Visible smoothness and surface consistency.",under_eye:"Visible appearance of the eye area relative to the surrounding complexion.",vitality:"Visible impression of freshness, alertness and balance."};
 export default async function(req,res){
- const id=String(req.query?.session_id||"").trim();
- if(!id||id.length>128)return res.status(400).send("Glow Check session is required");
- const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[id]);
- if(!q.rows[0])return res.status(404).send("Glow Check not found");
- const a={...(q.rows[0].analysis_json||{}),created_at:q.rows[0].created_at};
- const html=renderFreeReport(a,{sessionId:id});
+ const journeyId=String(req.query?.journey_id||"").trim().toUpperCase();
+ const sessionId=String(req.query?.session_id||"").trim();
+ let a;
+ let renderId=sessionId;
+ if(journeyId){
+  if(!/^GJ-[A-Z0-9]{8,20}$/.test(journeyId))return res.status(400).send("Glow Journey ID is invalid");
+  const q=await db.query("SELECT initial_analysis_json,created_at FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[journeyId]);
+  if(!q.rows[0])return res.status(404).send("Glow Journey not found");
+  a={...(q.rows[0].initial_analysis_json||{}),created_at:q.rows[0].created_at};
+  renderId=journeyId;
+ }else{
+  if(!sessionId||sessionId.length>128)return res.status(400).send("Glow Check session is required");
+  const journey=await db.query("SELECT journey_id,initial_analysis_json,created_at FROM glow_journeys WHERE session_id = $1 LIMIT 1",[sessionId]);
+  if(journey.rows[0]){
+   a={...(journey.rows[0].initial_analysis_json||{}),created_at:journey.rows[0].created_at};
+   renderId=journey.rows[0].journey_id;
+  }else{
+   const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[sessionId]);
+   if(!q.rows[0])return res.status(404).send("Glow Check not found");
+   a={...(q.rows[0].analysis_json||{}),created_at:q.rows[0].created_at};
+  }
+ }
+ const html=renderFreeReport(a,{sessionId:renderId});
  res.setHeader("Content-Type","text/html; charset=utf-8");
  return res.send(html);
  const c=a.categories||{};

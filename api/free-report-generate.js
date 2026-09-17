@@ -9,21 +9,27 @@ export default async function(req,res){
  const sessionId=String(req.body?.sessionId||"").trim(); const recipient=String(req.body?.email||"").trim().toLowerCase(); const sendEmail=Boolean(req.body?.sendEmail);
  if(!sessionId)return res.status(400).json({error:"Glow Check session is required."});
  if(sendEmail&&!validEmail(recipient))return res.status(400).json({error:"Please enter a valid email address."});
- const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[sessionId]);
- if(!q.rows[0])return res.status(404).json({error:"Glow Check not found."});
- const analysis=q.rows[0];
  let journey=(await db.query("SELECT * FROM glow_journeys WHERE session_id = $1 LIMIT 1",[sessionId])).rows[0];
- if(!journey){
-  const assessment=(await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at ASC LIMIT 1",[sessionId])).rows[0];
+ let analysis;
+ if(journey){
+  // Once a Journey exists, its Day-0 snapshot is authoritative. Never regenerate
+  // a customer-facing report from a later analysis created with the same session.
+  analysis={analysis_json:journey.initial_analysis_json,overall_score:journey.initial_score};
+  if(sendEmail && journey.email !== recipient){
+   journey=(await db.query("UPDATE glow_journeys SET email=$1 WHERE id=$2 RETURNING *",[recipient,journey.id])).rows[0];
+  }
+ }else{
+  const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[sessionId]);
+  if(!q.rows[0])return res.status(404).json({error:"Glow Check not found."});
+  analysis=q.rows[0];
+  const assessment=(await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at DESC LIMIT 1",[sessionId])).rows[0];
   if(!assessment)return res.status(409).json({error:"Your Glow assessment could not be linked. Please run your Glow Check again."});
   const journeyId="GJ-"+crypto.randomUUID().replaceAll("-","").slice(0,8).toUpperCase();
   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score)])).rows[0];
- } else if(sendEmail && journey.email !== recipient){
-  journey=(await db.query("UPDATE glow_journeys SET email=$1 WHERE id=$2 RETURNING *",[recipient,journey.id])).rows[0];
  }
- const url="https://glow-ai-v01.hatchable.site/api/free-report-html?session_id="+encodeURIComponent(sessionId);
+ const url="https://glow-ai-v01.hatchable.site/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
  const pdf=await browser.pdf(url);
- const key="glow-snapshots/"+encodeURIComponent(sessionId)+".pdf";
+ const key="glow-snapshots/"+encodeURIComponent(journey.journey_id)+".pdf";
  const pdfUrl=await storage.put(key,pdf,"application/pdf");
  const rawToken=base64url(crypto.getRandomValues(new Uint8Array(32)));
  const tokenHash=await sha256(rawToken);

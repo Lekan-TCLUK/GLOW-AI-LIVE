@@ -57,7 +57,7 @@ export default async function(req, res) {
 
   const analysis = await db.query("SELECT analysis_json, overall_score FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1", [String(sessionId)]);
   if (!analysis.rows[0]) return res.status(404).json({ error: "Your Glow analysis could not be found. Please run your Glow Check again." });
-  const assessment = await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at ASC LIMIT 1", [String(sessionId)]);
+  const assessment = await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at DESC LIMIT 1", [String(sessionId)]);
   if (!assessment.rows[0]) return res.status(409).json({ error: "Your Glow assessment could not be linked. Please run your Glow Check again." });
 
   const journeyId = existing.rows[0]?.journey_id || ("GJ-" + crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase());
