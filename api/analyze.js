@@ -1,33 +1,72 @@
 import { ai, db } from "hatchable";
+import { VISION_SYSTEM_PROMPT, VISION_PROMPT_VERSION } from "../lib/vision/prompt.js";
+import { evaluatePhotoQuality } from "../lib/vision/quality.js";
+import { validateObservationPayload } from "../lib/vision/schema.js";
+import { validateVisionSafety } from "../lib/vision/safety.js";
+import { processVisionObservations } from "../lib/vision/pipeline.js";
+import { CALIBRATION_VERSION, CALIBRATION_STATUS } from "../lib/vision/calibration.js";
+import { ENGINE_VERSION } from "../lib/engine/scoring.js";
+import { RANKING_ENGINE_VERSION } from "../lib/engine/ranking.js";
+import { ARCHETYPE_ENGINE_VERSION } from "../lib/engine/archetypes.js";
+import { overallBand } from "../lib/engine/status.js";
 
 export const access = "public";
 export const methods = ["POST", "OPTIONS"];
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Idempotency-Key");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 }
 
-const weights = {
-  radiance: 1 / 6,
-  hydration_appearance: 1 / 6,
-  evenness: 1 / 6,
-  texture: 1 / 6,
-  under_eye: 1 / 6,
-  vitality: 1 / 6
+const DIMENSIONS = [
+  "radiance",
+  "hydration_appearance",
+  "evenness",
+  "texture",
+  "under_eye_appearance",
+  "overall_vitality"
+];
+
+const LEGACY_KEYS = {
+  under_eye_appearance: "under_eye",
+  overall_vitality: "vitality"
 };
 
-function band(score) {
-  if (score >= 85) return "Exceptional Glow";
-  if (score >= 70) return "Strong Glow";
-  if (score >= 55) return "Developing Glow";
-  if (score >= 40) return "Glow Reset";
-  return "Glow Reboot";
+function cleanText(value, max = 240) {
+  return String(value || "").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, max);
 }
 
-function clamp(n) {
-  return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+async function sha256(value) {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function buildLegacyAnalysis(result, observations) {
+  const categories = {};
+  for (const dimension of DIMENSIONS) {
+    const key = LEGACY_KEYS[dimension] || dimension;
+    categories[key] = {
+      score: result.scores[dimension],
+      observations: Array.isArray(observations.dimensions[dimension]?.notes)
+        ? observations.dimensions[dimension].notes.slice(0, 2).map(cleanText)
+        : []
+    };
+  }
+  return {
+    valid: true,
+    categories,
+    overall_score: result.scores ? Math.round(DIMENSIONS.reduce((sum, d) => sum + result.scores[d], 0) / DIMENSIONS.length) : 0,
+    band: overallBand(Math.round(DIMENSIONS.reduce((sum, d) => sum + result.scores[d], 0) / DIMENSIONS.length)),
+    top3: result.top3,
+    archetype: result.archetype,
+    calibration_version: CALIBRATION_VERSION,
+    scoring_version: ENGINE_VERSION,
+    ranking_version: RANKING_ENGINE_VERSION,
+    archetype_engine_version: ARCHETYPE_ENGINE_VERSION,
+    observation_version: VISION_PROMPT_VERSION
+  };
 }
 
 export default async function (req, res) {
@@ -37,7 +76,9 @@ export default async function (req, res) {
 
   const body = req.body || {};
   const imageData = body.imageData;
-  const sessionId = String(body.sessionId || crypto.randomUUID());
+  const sessionId = String(body.sessionId || crypto.randomUUID()).slice(0, 128);
+  const idempotencyKey = String(req.headers?.["idempotency-key"] || body.idempotencyKey || "").trim().slice(0, 128);
+  const requestHash = await sha256(`${sessionId}:${imageData}`);
 
   if (!imageData || typeof imageData !== "string" || !imageData.startsWith("data:image/")) {
     return res.status(400).json({ error: "A valid image is required." });
@@ -46,48 +87,134 @@ export default async function (req, res) {
     return res.status(413).json({ error: "Image is too large. Please use a smaller photo." });
   }
 
-  const system = `You are GLOW AI, a beauty and wellness appearance assistant. Analyze ONLY visible, non-sensitive facial appearance characteristics in the supplied photo. Do not diagnose medical conditions. Do not infer age, race, ethnicity, gender, hormones, nutrition deficiencies, diseases, or other sensitive traits. Do not claim to measure hydration, health, collagen, biological age, or internal cellular status from a photo. Use wording such as apparent, visible, or appears. Return ONLY valid JSON matching the requested schema.`;
-  const prompt = `Analyze this selfie for a consumer beauty experience. If the image is unsuitable (no clear face, extreme blur, sunglasses/face obstruction, or no person), return {"valid":false,"reason":"..."}. Otherwise return exactly this JSON shape: {"valid":true,"categories":{"radiance":{"score":0,"observations":["..."]},"hydration_appearance":{"score":0,"observations":["..."]},"evenness":{"score":0,"observations":["..."]},"texture":{"score":0,"observations":["..."]},"under_eye":{"score":0,"observations":["..."]},"vitality":{"score":0,"observations":["..."]}},"overall_summary":"..."}. Scores are 0-100 estimates of visible appearance only. Give 1-2 concise observations per category. Keep recommendations out of this response. Avoid medical claims.`;
+  if (idempotencyKey) {
+    try {
+      const existing = await db.query(
+        "SELECT request_hash, response_status, response_json FROM glow_idempotency_keys WHERE scope = $1 AND idempotency_key = $2 AND expires_at > now()",
+        ["ANALYZE", idempotencyKey]
+      );
+      if (existing.rows.length) {
+        const saved = existing.rows[0];
+        if (saved.request_hash !== requestHash) return res.status(409).json({ error: "This idempotency key was already used for a different request." });
+        return res.status(Number(saved.response_status || 200)).json(saved.response_json || { error: "Previous request found." });
+      }
+    } catch (e) {
+      console.error("GLOW analyze idempotency lookup error", e);
+    }
+  }
+
+  const prompt = `${VISION_SYSTEM_PROMPT}\n\nFor this image, first assess image quality. Return ONLY valid JSON in this exact shape:\n{"quality":{"status":"PASS|RETRY|REJECT","reason_codes":[]},"dimensions":{"radiance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"hydration_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"evenness":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"texture":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"under_eye_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"overall_vitality":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]}},"limitations":[]}\nUse only the allowed levels. Notes must describe visible appearance only. If the image cannot support reliable observation, set quality to RETRY or REJECT and do not guess the dimensions.`;
 
   try {
-    const result = await ai.generateText({
+    const aiResult = await ai.generateText({
       model: "gpt",
-      system,
+      system: VISION_SYSTEM_PROMPT,
       messages: [{ role: "user", content: [
         { type: "text", text: prompt },
         { type: "image_url", image_url: { url: imageData } }
       ] }],
       maxSteps: 1,
-      purpose: "glow-v02-vision-analysis"
+      purpose: "glow-v1-vision-observation"
     });
 
-    let parsed;
+    let observations;
     try {
-      parsed = JSON.parse(result.text.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim());
+      const text = String(aiResult.text || "").replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+      observations = JSON.parse(text);
     } catch {
-      return res.status(502).json({ error: "The AI returned an invalid analysis. Please try again." });
-    }
-    if (!parsed.valid) return res.status(422).json({ error: parsed.reason || "Please upload a clearer front-facing photo." });
-
-    for (const key of Object.keys(weights)) {
-      if (!parsed.categories?.[key]) return res.status(502).json({ error: "Incomplete AI analysis. Please try again." });
-      parsed.categories[key].score = clamp(parsed.categories[key].score);
-      parsed.categories[key].observations = Array.isArray(parsed.categories[key].observations)
-        ? parsed.categories[key].observations.slice(0, 2).map(String)
-        : [];
+      return res.status(502).json({ error: "The visual assessment could not be read. Please try again." });
     }
 
-    const overall = Math.round(Object.entries(weights).reduce((sum, [key, weight]) => sum + parsed.categories[key].score * weight, 0));
-    const resultData = { ...parsed, overall_score: overall, band: band(overall) };
+    const quality = evaluatePhotoQuality(observations.quality || {});
+    if (quality.status !== "PASS") {
+      const status = quality.status === "REJECT" ? 422 : 409;
+      return res.status(status).json({
+        error: quality.status === "REJECT" ? "Please upload a clear, front-facing photo." : "Please retake the photo in clearer, even lighting.",
+        quality_status: quality.status,
+        reason_codes: quality.reason_codes
+      });
+    }
+
+    const schema = validateObservationPayload(observations);
+    if (!schema.valid) return res.status(502).json({ error: "The visual assessment was incomplete. Please try again." });
+    const safety = validateVisionSafety(observations);
+    if (!safety.safe) return res.status(502).json({ error: "The visual assessment could not be safely completed. Please try again." });
+
+    const engine = processVisionObservations(observations);
+    if (!engine.ok) return res.status(502).json({ error: "The visual assessment could not be completed. Please try again." });
+
+    const overall = Math.round(DIMENSIONS.reduce((sum, d) => sum + engine.scores[d], 0) / DIMENSIONS.length);
+    const band = overallBand(overall);
+    const analysis = buildLegacyAnalysis({ ...engine, scores: engine.scores }, observations);
+    analysis.overall_score = overall;
+    analysis.band = band;
 
     await db.query(
       "INSERT INTO glow_analyses (session_id, overall_score, band, analysis_json) VALUES ($1, $2, $3, $4)",
-      [sessionId, overall, resultData.band, JSON.stringify(resultData)]
+      [sessionId, overall, band, JSON.stringify(analysis)]
     );
 
-    return res.json({ sessionId, analysis: resultData });
+    const assessmentInsert = await db.query(
+      "INSERT INTO glow_assessments (session_id, assessment_type, assessment_status, assessment_version, vision_version, scoring_version, calibration_version, quality_gate_version, safety_version, photo_quality_status, photo_quality_reason_codes, assessment_confidence, global_limitations, safety_flags, overall_score, overall_band, archetype_code, archetype_match_score, archetype_second_match_score, archetype_gap, archetype_confidence, archetype_engine_version) VALUES ($1,'INITIAL','VALID','assessment-v1','vision-v1',$2,$3,'quality-gate-v1','safety-v1',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id",
+      [
+        sessionId,
+        ENGINE_VERSION,
+        CALIBRATION_VERSION,
+        quality.status,
+        JSON.stringify(quality.reason_codes),
+        engine.archetype.confidence === "HIGH" ? "HIGH" : "STANDARD",
+        JSON.stringify(Array.isArray(observations.limitations) ? observations.limitations.slice(0, 8).map(cleanText) : []),
+        JSON.stringify(safety.flags),
+        overall,
+        band,
+        engine.archetype.archetype_code,
+        engine.archetype.match_score,
+        engine.archetype.second_match_score,
+        engine.archetype.gap,
+        engine.archetype.confidence,
+        ARCHETYPE_ENGINE_VERSION
+      ]
+    );
+
+    const assessmentId = assessmentInsert.rows[0]?.id;
+    if (!assessmentId) return res.status(500).json({ error: "The assessment could not be saved. Please try again." });
+
+    for (const dimension of DIMENSIONS) {
+      await db.query(
+        "INSERT INTO glow_dimension_scores (assessment_id, dimension, score, status, observations) VALUES ($1,$2,$3,$4,$5)",
+        [assessmentId, dimension, engine.scores[dimension], engine.dimensions[dimension].status, JSON.stringify(engine.dimensions[dimension].observation.notes || [])]
+      );
+    }
+    for (const priority of engine.top3) {
+      await db.query(
+        "INSERT INTO glow_assessment_priorities (assessment_id, rank, dimension, score) VALUES ($1,$2,$3,$4)",
+        [assessmentId, priority.rank, priority.dimension, priority.score]
+      );
+    }
+
+    const response = {
+      sessionId,
+      assessmentId,
+      analysis,
+      calibration_version: CALIBRATION_VERSION,
+      calibration_status: CALIBRATION_STATUS,
+      quality_gate_version: "quality-gate-v1",
+      vision_version: "vision-v1",
+      scoring_version: ENGINE_VERSION,
+      ranking_version: RANKING_ENGINE_VERSION,
+      archetype_engine_version: ARCHETYPE_ENGINE_VERSION
+    };
+
+    if (idempotencyKey) {
+      await db.query(
+        "INSERT INTO glow_idempotency_keys (scope, idempotency_key, request_hash, response_status, response_json, resource_type, expires_at) VALUES ($1,$2,$3,$4,$5,$6,now()+interval '24 hours') ON CONFLICT (scope,idempotency_key) DO NOTHING",
+        ["ANALYZE", idempotencyKey, requestHash, 200, JSON.stringify(response), "glow_assessment"]
+      );
+    }
+
+    return res.json(response);
   } catch (error) {
-    console.error("GLOW analysis error", error);
+    console.error("GLOW V1 analysis error", error);
     return res.status(500).json({ error: "We couldn't analyse that photo right now. Please try again." });
   }
 }
