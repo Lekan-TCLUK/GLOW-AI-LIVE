@@ -1,4 +1,5 @@
 import { db } from "hatchable";
+import { renderFreeReport } from "../lib/free-report-template.js";
 export const access="public";
 export const methods=["GET"];
 function esc(s){return String(s??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
@@ -9,7 +10,11 @@ export default async function(req,res){
  if(!id||id.length>128)return res.status(400).send("Glow Check session is required");
  const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[id]);
  if(!q.rows[0])return res.status(404).send("Glow Check not found");
- const a=q.rows[0].analysis_json||{}; const c=a.categories||{};
+ const a={...(q.rows[0].analysis_json||{}),created_at:q.rows[0].created_at};
+ const html=renderFreeReport(a,{sessionId:id});
+ res.setHeader("Content-Type","text/html; charset=utf-8");
+ return res.send(html);
+ const c=a.categories||{};
  const ranked=Object.entries(names).map(([k,n])=>({key:k,name:n,score:Number(c[k]?.score||0),obs:c[k]?.observations||[]})).sort((x,y)=>x.score-y.score||x.name.localeCompare(y.name));
  const top=ranked.slice(0,3);
  const dims=Object.entries(names).map(([k,n])=>`<tr><td>${esc(n)}</td><td><b>${esc(c[k]?.score??0)}</b></td><td>${esc((c[k]?.observations||[])[0]||observations[k])}</td></tr>`).join("");
