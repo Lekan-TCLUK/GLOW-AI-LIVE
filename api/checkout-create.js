@@ -45,12 +45,14 @@ export default async function(req, res) {
 
   const analysis = await db.query("SELECT analysis_json, overall_score FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1", [String(sessionId)]);
   if (!analysis.rows[0]) return res.status(404).json({ error: "Your Glow analysis could not be found. Please run your Glow Check again." });
+  const assessment = await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at ASC LIMIT 1", [String(sessionId)]);
+  if (!assessment.rows[0]) return res.status(409).json({ error: "Your Glow assessment could not be linked. Please run your Glow Check again." });
 
   const journeyId = existing.rows[0]?.journey_id || ("GJ-" + crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase());
   if (!existing.rows[0]) {
     await db.query(
-      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_analysis_json, initial_score) VALUES ($1, $2, $3, $4, $5)",
-      [journeyId, String(sessionId), String(email).trim().toLowerCase(), JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score)]
+      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score) VALUES ($1, $2, $3, $4, $5, $6)",
+      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score)]
     );
   }
 
