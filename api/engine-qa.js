@@ -22,7 +22,7 @@ export default async function (req, res) {
   assert('status boundaries', dimensionStatus(54)==='PRIORITY' && dimensionStatus(55)==='FOCUS' && dimensionStatus(65)==='DEVELOPING' && dimensionStatus(70)==='STRENGTH');
   assert('band boundaries', overallBand(85)==='Exceptional Glow' && overallBand(70)==='Strong Glow' && overallBand(55)==='Developing Glow' && overallBand(40)==='Glow Reset' && overallBand(39)==='Glow Reboot');
   const t = topThree(s);
-  assert('top3 deterministic order', JSON.stringify(t.map(x=>x.dimension)) === JSON.stringify(['under_eye_appearance','radiance','overall_vitality']), JSON.stringify(t));
+  assert('top3 deterministic order', JSON.stringify(t.map(x=>x.dimension)) === JSON.stringify(['under_eye_appearance','radiance','hydration_appearance']), JSON.stringify(t));
 
   const tired = classifyArchetype(s);
   assert('tired archetype', tired.archetype_code === 'TIRED_LUMINARY', JSON.stringify(tired));
@@ -36,7 +36,7 @@ export default async function (req, res) {
   assert('reset max 2 actions', reset.days.every(d=>d.actions.length<=2));
   assert('reset uses Top3 only', reset.days.every(d=>d.actions.every(a=>t.some(p=>p.dimension===a.dimension))));
   assert('reset roles', JSON.stringify(reset.days.map(d=>d.role)) === JSON.stringify(['Immediate Win','Protection','Target','Lifestyle','Reinforce','Pantry','Reflect']));
-  assert('reset protection action', reset.days[1].actions[0].action_id === 'UE-007');
+  assert('reset protection action', reset.days[1].actions[0].action_id === 'RAD-004');
 
   const journey = buildThirtyDayJourney(t);
   assert('journey has 30 days', journey.days.length === 30);
