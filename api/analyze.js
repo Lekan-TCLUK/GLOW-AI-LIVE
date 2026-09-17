@@ -76,10 +76,12 @@ export default async function (req, res) {
 
   const body = req.body || {};
   const imageData = body.imageData;
+  const freeLegalAccepted = body.freeLegalAccepted === true;
   const sessionId = String(body.sessionId || crypto.randomUUID()).slice(0, 128);
   const idempotencyKey = String(req.headers?.["idempotency-key"] || body.idempotencyKey || "").trim().slice(0, 128);
   const requestHash = await sha256(`${sessionId}:${imageData}`);
 
+  if (!freeLegalAccepted) return res.status(400).json({ error: "Please accept the Terms & Conditions and acknowledge the Privacy Policy before continuing." });
   if (!imageData || typeof imageData !== "string" || !imageData.startsWith("data:image/")) {
     return res.status(400).json({ error: "A valid image is required." });
   }
@@ -150,7 +152,7 @@ export default async function (req, res) {
     analysis.band = band;
 
     await db.query(
-      "INSERT INTO glow_analyses (session_id, overall_score, band, analysis_json) VALUES ($1, $2, $3, $4)",
+      "INSERT INTO glow_analyses (session_id, overall_score, band, analysis_json, terms_accepted_at) VALUES ($1, $2, $3, $4, now())",
       [sessionId, overall, band, JSON.stringify(analysis)]
     );
 
