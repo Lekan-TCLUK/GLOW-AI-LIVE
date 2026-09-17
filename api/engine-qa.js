@@ -52,7 +52,7 @@ export default async function (req, res) {
   const day30 = { radiance:68, hydration_appearance:70, evenness:82, texture:79, under_eye_appearance:61, overall_vitality:72 };
   const progress = calculateProgress(s, day30);
   assert('progress overall delta', progress.overall_delta===3, `got ${progress.overall_delta}`);
-  assert('progress movement', progress.overall_movement==='VISIBLE_MOVEMENT');
+  assert('progress movement', progress.overall_movement==='POSITIVE_MOVEMENT');
   assert('progress dimension deltas', progress.dimension_deltas.under_eye_appearance===3 && progress.dimension_deltas.overall_vitality===5);
   assert('progress caveat', progress.caveat.includes('not a medical assessment'));
 
