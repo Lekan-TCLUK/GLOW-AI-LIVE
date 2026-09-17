@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX uq_glow_reports_active ON glow_reports(journey_id, report_type) WHERE status IN ('REQUESTED', 'GENERATING', 'READY', 'DELIVERY_PENDING', 'DELIVERED')

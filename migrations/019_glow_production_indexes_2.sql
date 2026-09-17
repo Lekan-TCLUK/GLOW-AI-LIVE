@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX uq_glow_assessments_valid_day30 ON glow_assessments(journey_id) WHERE assessment_type = 'DAY30' AND assessment_status = 'VALID' AND journey_id IS NOT NULL
