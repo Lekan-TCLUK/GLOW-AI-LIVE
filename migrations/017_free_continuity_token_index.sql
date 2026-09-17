@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX glow_access_tokens_token_hash_key ON glow_access_tokens (token_hash)

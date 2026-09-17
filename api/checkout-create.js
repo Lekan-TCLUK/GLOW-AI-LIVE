@@ -1,5 +1,7 @@
 import { db } from "hatchable";
 
+async function sha256(value){const bytes=new TextEncoder().encode(value);const hash=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+
 export const access = "public";
 export const methods = ["POST"];
 
@@ -29,11 +31,20 @@ export default async function(req, res) {
   if (req.method === "OPTIONS") return res.status(204).send("");
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
-  const { email, sessionId, returnUrl } = req.body || {};
-  if (!/^\S+@\S+\.\S+$/.test(String(email || ""))) return res.status(400).json({ error: "A valid email is required." });
+  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken } = req.body || {};
+  let email = String(suppliedEmail || "").trim().toLowerCase();
+  let sessionId = String(suppliedSessionId || "").trim();
+  let continuityJourneyId = null;
+  if(continuityToken){
+    const tokenHash=await sha256(String(continuityToken).trim());
+    const tq=await db.query("SELECT j.id,j.journey_id,j.session_id,j.email,j.payment_status,j.stripe_session_id,j.pdf_url,j.email_sent_at FROM glow_access_tokens t JOIN glow_journeys j ON j.id=t.journey_id WHERE t.token_hash=$1 AND t.token_type='FREE_CONTINUITY' AND t.revoked_at IS NULL AND t.expires_at>now() LIMIT 1",[tokenHash]);
+    if(!tq.rows[0]) return res.status(404).json({error:"This Glow Journey link has expired or is no longer available."});
+    const linked=tq.rows[0]; continuityJourneyId=linked.id; sessionId=linked.session_id; if(!email)email=String(linked.email||"").trim().toLowerCase();
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "A valid email is required." });
   if (!sessionId) return res.status(400).json({ error: "Glow session is required." });
 
-  const existing = await db.query("SELECT journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE session_id = $1 LIMIT 1", [String(sessionId)]);
+  const existing = continuityJourneyId ? await db.query("SELECT journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : await db.query("SELECT journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
   if (existing.rows[0]?.payment_status === "paid" && existing.rows[0]?.stripe_session_id) {
     return res.json({
       alreadyPaid: true,

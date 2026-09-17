@@ -1,0 +1,1 @@
+ALTER TABLE glow_access_tokens DROP CONSTRAINT IF EXISTS glow_access_tokens_token_type_check
