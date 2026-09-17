@@ -1,0 +1,1 @@
+ALTER TABLE glow_journeys ADD COLUMN IF NOT EXISTS privacy_version TEXT NULL

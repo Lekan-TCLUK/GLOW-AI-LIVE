@@ -31,7 +31,8 @@ export default async function(req, res) {
   if (req.method === "OPTIONS") return res.status(204).send("");
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
-  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken } = req.body || {};
+  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
+  if (legalAccepted !== true || digitalAccepted !== true) return res.status(400).json({ error: "Please accept the Terms & Conditions and confirm immediate digital delivery before continuing." });
   let email = String(suppliedEmail || "").trim().toLowerCase();
   let sessionId = String(suppliedSessionId || "").trim();
   let continuityJourneyId = null;
@@ -44,7 +45,7 @@ export default async function(req, res) {
   if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "A valid email is required." });
   if (!sessionId) return res.status(400).json({ error: "Glow session is required." });
 
-  const existing = continuityJourneyId ? await db.query("SELECT journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : await db.query("SELECT journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
+  const existing = continuityJourneyId ? await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
   if (existing.rows[0]?.payment_status === "paid" && existing.rows[0]?.stripe_session_id) {
     return res.json({
       alreadyPaid: true,
@@ -62,8 +63,13 @@ export default async function(req, res) {
   const journeyId = existing.rows[0]?.journey_id || ("GJ-" + crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase());
   if (!existing.rows[0]) {
     await db.query(
-      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score) VALUES ($1, $2, $3, $4, $5, $6)",
-      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score)]
+      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score, terms_accepted_at, privacy_acknowledged_at, digital_content_accepted_at, terms_version, privacy_version) VALUES ($1, $2, $3, $4, $5, $6, now(), now(), now(), $7, $8)",
+      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40)]
+    );
+  } else {
+    await db.query(
+      "UPDATE glow_journeys SET email = $1, terms_accepted_at = COALESCE(terms_accepted_at, now()), privacy_acknowledged_at = COALESCE(privacy_acknowledged_at, now()), digital_content_accepted_at = COALESCE(digital_content_accepted_at, now()), terms_version = COALESCE(terms_version, $2), privacy_version = COALESCE(privacy_version, $3) WHERE id = $4",
+      [String(email).trim().toLowerCase(), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), existing.rows[0].id]
     );
   }
 

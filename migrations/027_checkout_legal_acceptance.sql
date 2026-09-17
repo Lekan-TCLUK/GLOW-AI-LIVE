@@ -1,0 +1,1 @@
+ALTER TABLE glow_journeys ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ NULL

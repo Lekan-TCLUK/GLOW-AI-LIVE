@@ -1,0 +1,1 @@
+ALTER TABLE glow_journeys ADD COLUMN IF NOT EXISTS digital_content_accepted_at TIMESTAMPTZ NULL
