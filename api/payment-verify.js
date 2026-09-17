@@ -19,17 +19,17 @@ async function stripeGet(path, key) {
 function esc(s) { return String(s || "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 
 async function ensurePdf(journey) {
-  if (journey.pdf_url) return journey.pdf_url;
+  if (journey.pdf_url && journey.plan_version === "PAID-REPORT-V2") return journey.pdf_url;
   const htmlUrl = "https://glow-ai-v01.hatchable.site/api/report-html?journey_id=" + encodeURIComponent(journey.journey_id);
   const pdf = await browser.pdf(htmlUrl);
   const pdfUrl = await storage.put("glow-plans/" + journey.journey_id + ".pdf", pdf, "application/pdf");
-  await db.query("UPDATE glow_journeys SET pdf_url = $1 WHERE journey_id = $2", [pdfUrl, journey.journey_id]);
+  await db.query("UPDATE glow_journeys SET pdf_url = $1, plan_version='PAID-REPORT-V2' WHERE journey_id = $2", [pdfUrl, journey.journey_id]);
   return pdfUrl;
 }
 
 async function sendPlanEmail(journey) {
-  if (journey.email_sent_at) return { sent: true, pdfUrl: journey.pdf_url || null };
   const pdf = await ensurePdf(journey);
+  if (journey.email_sent_at) return { sent: true, pdfUrl: pdf };
   await email.send({
     to: journey.email,
     subject: "Your Personal Glow Plan™ is ready ✨",

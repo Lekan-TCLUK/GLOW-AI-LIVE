@@ -1,4 +1,4 @@
-import { db } from "hatchable";
+import { db, browser, storage } from "hatchable";
 export const access = "public";
 export const methods = ["GET"];
 function cors(res){res.setHeader("Access-Control-Allow-Origin","*");}
@@ -10,5 +10,13 @@ export default async function(req,res){
   if(!q.rows[0]) return res.status(404).json({error:"We couldn't find that Glow Journey ID."});
   const j=q.rows[0];
   if(j.payment_status!=="paid") return res.status(402).json({error:"This Glow Journey has not been completed as a paid plan."});
-  return res.json({journeyId:j.journey_id,email:j.email,initialScore:j.initial_score,initialAnalysis:j.initial_analysis_json,day30Completed:j.day30_completed,day30Score:j.day30_score,day30Analysis:j.day30_analysis_json,pdfUrl:j.pdf_url||null,emailSent:Boolean(j.email_sent_at)});
+  let pdfUrl=j.pdf_url||null;
+  if(pdfUrl && j.plan_version !== "PAID-REPORT-V2") pdfUrl=null;
+  if(!pdfUrl){
+    const htmlUrl="https://glow-ai-v01.hatchable.site/api/report-html?journey_id="+encodeURIComponent(j.journey_id);
+    const pdf=await browser.pdf(htmlUrl);
+    pdfUrl=await storage.put("glow-plans/"+j.journey_id+".pdf",pdf,"application/pdf");
+    await db.query("UPDATE glow_journeys SET pdf_url=$1, plan_version='PAID-REPORT-V2' WHERE journey_id=$2",[pdfUrl,j.journey_id]);
+  }
+  return res.json({journeyId:j.journey_id,email:j.email,initialScore:j.initial_score,initialAnalysis:j.initial_analysis_json,day30Completed:j.day30_completed,day30Score:j.day30_score,day30Analysis:j.day30_analysis_json,pdfUrl,emailSent:Boolean(j.email_sent_at)});
 }
