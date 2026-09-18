@@ -187,6 +187,7 @@ export default async function (req, res) {
         sessionId,
         ENGINE_VERSION,
         CALIBRATION_VERSION,
+        quality.version,
         quality.status,
         JSON.stringify(quality.reason_codes),
         engine.archetype.confidence === "HIGH" ? "HIGH" : "STANDARD",
