@@ -187,7 +187,7 @@ export default async function (req, res) {
         sessionId,
         ENGINE_VERSION,
         CALIBRATION_VERSION,
-        quality.version,
+        quality.status,
         JSON.stringify(quality.reason_codes),
         engine.archetype.confidence === "HIGH" ? "HIGH" : "STANDARD",
         JSON.stringify(Array.isArray(observations.limitations) ? observations.limitations.slice(0, 8).map(cleanText) : []),
@@ -226,7 +226,7 @@ export default async function (req, res) {
       calibration_version: CALIBRATION_VERSION,
       calibration_status: CALIBRATION_STATUS,
       quality_gate_version: QUALITY_GATE_VERSION,
-      vision_version: "vision-v1",
+      vision_version: VISION_PROMPT_VERSION,
       scoring_version: ENGINE_VERSION,
       ranking_version: RANKING_ENGINE_VERSION,
       archetype_engine_version: ARCHETYPE_ENGINE_VERSION
