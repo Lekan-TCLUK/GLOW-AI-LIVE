@@ -1,6 +1,6 @@
 import { ai, db } from "hatchable";
 import { VISION_SYSTEM_PROMPT, VISION_PROMPT_VERSION } from "../lib/vision/prompt.js";
-import { evaluatePhotoQuality } from "../lib/vision/quality.js";
+import { evaluatePhotoQuality, QUALITY_GATE_VERSION } from "../lib/vision/quality.js";
 import { validateObservationPayload } from "../lib/vision/schema.js";
 import { validateVisionSafety } from "../lib/vision/safety.js";
 import { processVisionObservations } from "../lib/vision/pipeline.js";
@@ -105,8 +105,8 @@ export default async function (req, res) {
       analysis: j.initial_analysis_json,
       calibration_version: j.initial_analysis_json?.calibration_version || CALIBRATION_VERSION,
       calibration_status: CALIBRATION_STATUS,
-      quality_gate_version: "quality-gate-v1",
-      vision_version: j.initial_analysis_json?.observation_version || "vision-v1",
+      quality_gate_version: QUALITY_GATE_VERSION,
+      vision_version: j.initial_analysis_json?.observation_version || VISION_PROMPT_VERSION,
       scoring_version: j.initial_analysis_json?.scoring_version || ENGINE_VERSION,
       ranking_version: j.initial_analysis_json?.ranking_version || RANKING_ENGINE_VERSION,
       archetype_engine_version: j.initial_analysis_json?.archetype_engine_version || ARCHETYPE_ENGINE_VERSION,
@@ -130,7 +130,7 @@ export default async function (req, res) {
     }
   }
 
-  const prompt = `${VISION_SYSTEM_PROMPT}\n\nFor this image, first assess image quality. Return ONLY valid JSON in this exact shape:\n{"quality":{"status":"PASS|RETRY|REJECT","reason_codes":[]},"dimensions":{"radiance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"hydration_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"evenness":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"texture":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"under_eye_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"overall_vitality":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]}},"limitations":[]}\nUse only the allowed levels. Notes must describe visible appearance only. If the image cannot support reliable observation, set quality to RETRY or REJECT and do not guess the dimensions.`;
+  const prompt = `${VISION_SYSTEM_PROMPT}\n\nFor this image, first perform the strict quality gate. If the image contains anything other than exactly one visible human face, set quality to REJECT and do not score. Return ONLY valid JSON in this exact shape:\n{"quality":{"status":"PASS|RETRY|REJECT","reason_codes":[],"face_count":1,"subject_type":"HUMAN_FACE","is_screenshot_or_collage":false},"dimensions":{"radiance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"hydration_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"evenness":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"texture":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"under_eye_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"overall_vitality":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]}},"limitations":[]}\nUse only the allowed levels. Notes must describe visible appearance only. If the image cannot support reliable observation, set quality to RETRY or REJECT and do not guess the dimensions.`;
 
   try {
     const aiResult = await ai.generateText({
@@ -182,12 +182,12 @@ export default async function (req, res) {
     );
 
     const assessmentInsert = await db.query(
-      "INSERT INTO glow_assessments (session_id, assessment_type, assessment_status, assessment_version, vision_version, scoring_version, calibration_version, quality_gate_version, safety_version, photo_quality_status, photo_quality_reason_codes, assessment_confidence, global_limitations, safety_flags, overall_score, overall_band, archetype_code, archetype_match_score, archetype_second_match_score, archetype_gap, archetype_confidence, archetype_engine_version) VALUES ($1,'INITIAL','VALID','assessment-v1','vision-v1',$2,$3,'quality-gate-v1','safety-v1',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id",
+      "INSERT INTO glow_assessments (session_id, assessment_type, assessment_status, assessment_version, vision_version, scoring_version, calibration_version, quality_gate_version, safety_version, photo_quality_status, photo_quality_reason_codes, assessment_confidence, global_limitations, safety_flags, overall_score, overall_band, archetype_code, archetype_match_score, archetype_second_match_score, archetype_gap, archetype_confidence, archetype_engine_version) VALUES ($1,'INITIAL','VALID','assessment-v1','vision-v2',$2,$3,$4,'safety-v1',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id",
       [
         sessionId,
         ENGINE_VERSION,
         CALIBRATION_VERSION,
-        quality.status,
+        quality.version,
         JSON.stringify(quality.reason_codes),
         engine.archetype.confidence === "HIGH" ? "HIGH" : "STANDARD",
         JSON.stringify(Array.isArray(observations.limitations) ? observations.limitations.slice(0, 8).map(cleanText) : []),
@@ -225,7 +225,7 @@ export default async function (req, res) {
       analysis,
       calibration_version: CALIBRATION_VERSION,
       calibration_status: CALIBRATION_STATUS,
-      quality_gate_version: "quality-gate-v1",
+      quality_gate_version: QUALITY_GATE_VERSION,
       vision_version: "vision-v1",
       scoring_version: ENGINE_VERSION,
       ranking_version: RANKING_ENGINE_VERSION,
