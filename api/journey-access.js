@@ -13,7 +13,7 @@ export default async function(req,res){
   let pdfUrl=j.pdf_url||null;
   if(pdfUrl && j.plan_version !== "PAID-REPORT-V2") pdfUrl=null;
   if(!pdfUrl){
-    const htmlUrl="https://i5g7yz.hatchable.site/api/report-html?journey_id="+encodeURIComponent(j.journey_id);
+    const htmlUrl="https://glow-ai-v01.hatchable.site/api/report-html?journey_id="+encodeURIComponent(j.journey_id);
     const pdf=await browser.pdf(htmlUrl);
     pdfUrl=await storage.put("glow-plans/"+j.journey_id+".pdf",pdf,"application/pdf");
     await db.query("UPDATE glow_journeys SET pdf_url=$1, plan_version='PAID-REPORT-V2' WHERE journey_id=$2",[pdfUrl,j.journey_id]);

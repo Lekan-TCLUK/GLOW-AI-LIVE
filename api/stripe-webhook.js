@@ -1,53 +1,8 @@
-import { db, email, browser, storage, scheduler } from "hatchable";
+import { db, scheduler } from "hatchable";
+import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
 
 export const access = "public";
 export const methods = ["POST"];
-
-function esc(s) {
-  return String(s || "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-}
-
-async function ensurePdf(journey) {
-  if (journey.pdf_url) return journey.pdf_url;
-  const htmlUrl = "https://i5g7yz.hatchable.site/api/report-html?journey_id=" + encodeURIComponent(journey.journey_id);
-  const pdf = await browser.pdf(htmlUrl);
-  const pdfUrl = await storage.put("glow-plans/" + journey.journey_id + ".pdf", pdf, "application/pdf");
-  await db.query("UPDATE glow_journeys SET pdf_url = $1 WHERE journey_id = $2", [pdfUrl, journey.journey_id]);
-  return pdfUrl;
-}
-
-async function sendPlanEmail(journey) {
-  if (journey.email_sent_at) return;
-  const pdf = await ensurePdf(journey);
-  await email.send({
-    to: journey.email,
-    subject: "Your Personal Glow Plan™ is ready ✨",
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#191715"><h1 style="font-family:Georgia,serif">Your Glow Journey has started. ✨</h1><p>Your personalised <b>Personal Glow Plan™</b> is ready.</p><p><b>Glow Journey ID:</b> ${esc(journey.journey_id)}</p><p>Keep this ID safe. You'll use it for your Day-30 Glow Re-Check.</p><p><a href="${pdf}" style="display:inline-block;padding:14px 20px;background:#191715;color:#fff;text-decoration:none;border-radius:8px">OPEN MY GLOW PLAN</a></p><p style="font-size:12px;color:#6d675f">Your plan is a beauty and wellness resource based on visible appearance characteristics. It is not a medical assessment.</p></div>`
-  });
-  await db.query("UPDATE glow_journeys SET email_sent_at = now() WHERE journey_id = $1", [journey.journey_id]);
-  return { sent: true, pdfUrl: pdf };
-}
-
-async function activateJourney(session) {
-  const journeyId = session?.metadata?.journey_id || session?.client_reference_id;
-  if (!journeyId) throw new Error("Stripe session has no Glow Journey ID");
-  const found = await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId]);
-  if (!found.rows[0]) throw new Error("Glow Journey not found");
-
-  await db.query(
-    "UPDATE glow_journeys SET payment_status = 'paid', stripe_session_id = $1, paid_at = COALESCE(paid_at, now()), journey_started_at = COALESCE(journey_started_at, now()), journey_status = CASE WHEN journey_status = 'PENDING_PAYMENT' THEN 'ACTIVE' ELSE journey_status END WHERE journey_id = $2",
-    [session.id, journeyId]
-  );
-  const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId])).rows[0];
-  if (updated.email && updated.journey_started_at && !updated.day30_completed) {
-    const reminderAt = new Date(new Date(updated.journey_started_at).getTime() + 28 * 24 * 60 * 60 * 1000);
-    if (reminderAt.getTime() > Date.now()) {
-      try { await scheduler.at(reminderAt.toISOString(), "/api/day30-reminder", { name: "day29-" + updated.journey_id, payload: { journeyId: updated.journey_id } }); } catch (scheduleError) { console.error("Day-29 reminder schedule failed", scheduleError); }
-    }
-  }
-  try { await sendPlanEmail(updated); } catch (mailError) { console.error("Plan email failed", mailError); }
-  return journeyId;
-}
 
 function rawBytes(raw) {
   if (raw instanceof Uint8Array) return raw;
@@ -74,8 +29,7 @@ function parseSignature(header) {
 
 async function verifyStripeSignature(payload, header, secret) {
   const parsed = parseSignature(header);
-  if (!parsed.timestamp || !parsed.signatures.length) return false;
-  if (!Number.isFinite(parsed.timestamp)) return false;
+  if (!parsed.timestamp || !parsed.signatures.length || !Number.isFinite(parsed.timestamp)) return false;
   const age = Math.abs(Math.floor(Date.now() / 1000) - parsed.timestamp);
   if (age > 300) return false;
   const signed = new TextEncoder().encode(String(parsed.timestamp) + "." + new TextDecoder().decode(payload));
@@ -84,6 +38,46 @@ async function verifyStripeSignature(payload, header, secret) {
   return parsed.signatures.some(sig => sig.length === digest.length && crypto.timingSafeEqual
     ? crypto.timingSafeEqual(new TextEncoder().encode(sig), new TextEncoder().encode(digest))
     : sig === digest);
+}
+
+async function activateJourney(session) {
+  const journeyId = session?.metadata?.journey_id || session?.client_reference_id;
+  if (!journeyId) throw new Error("Stripe session has no Glow Journey ID");
+
+  const found = await db.query("SELECT * FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId]);
+  if (!found.rows[0]) throw new Error("Glow Journey not found");
+
+  await db.query(
+    "UPDATE glow_journeys SET payment_status='paid', stripe_session_id=$1, paid_at=COALESCE(paid_at,now()), journey_started_at=COALESCE(journey_started_at,now()), journey_status=CASE WHEN journey_status='PENDING_PAYMENT' THEN 'ACTIVE' ELSE journey_status END WHERE journey_id=$2",
+    [session.id, journeyId]
+  );
+
+  const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];
+
+  if (updated.email && updated.journey_started_at && !updated.day30_completed) {
+    const reminderAt = new Date(new Date(updated.journey_started_at).getTime() + 28 * 24 * 60 * 60 * 1000);
+    if (reminderAt.getTime() > Date.now()) {
+      try {
+        await scheduler.at(reminderAt.toISOString(), "/api/day30-reminder", {
+          name: "day29-" + updated.journey_id,
+          payload: { journeyId: updated.journey_id }
+        });
+      } catch (scheduleError) {
+        console.error("Day-29 reminder schedule failed", scheduleError);
+      }
+    }
+  }
+
+  if (updated.email) {
+    try {
+      const queued = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PDF");
+      if (queued.queued && queued.deliveryId) await processCustomerEmail(queued.deliveryId);
+    } catch (mailError) {
+      console.error("Plan email queue/send failed", mailError);
+    }
+  }
+
+  return journeyId;
 }
 
 export default async function(req, res) {

@@ -8,7 +8,7 @@ export default async function(req,res){
  const q=await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[id]); if(!q.rows[0])return res.status(404).json({error:"Glow Journey not found."}); const j=q.rows[0]; if(j.payment_status!=="paid")return res.status(402).json({error:"Payment is required before generating your plan."});
  if(j.pdf_url && j.plan_version === "PAID-REPORT-V2")return res.json({journeyId:id,pdfUrl:j.pdf_url});
  try{
-  const url="https://i5g7yz.hatchable.site/api/report-html?journey_id="+encodeURIComponent(id);
+  const url="https://glow-ai-v01.hatchable.site/api/report-html?journey_id="+encodeURIComponent(id);
   const pdf=await browser.pdf(url);
   const pdfUrl=await storage.put("glow-plans/"+id+".pdf",pdf,"application/pdf");
   await db.query("UPDATE glow_journeys SET pdf_url=$1, plan_version='PAID-REPORT-V2' WHERE journey_id=$2",[pdfUrl,id]);

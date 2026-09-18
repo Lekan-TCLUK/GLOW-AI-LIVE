@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_glow_delivery_events_status_queued ON glow_delivery_events (status, queued_at);

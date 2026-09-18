@@ -27,14 +27,14 @@ export default async function(req,res){
   const journeyId="GJ-"+crypto.randomUUID().replaceAll("-","").slice(0,8).toUpperCase();
   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score)])).rows[0];
  }
- const url="https://i5g7yz.hatchable.site/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
+ const url="https://glow-ai-v01.hatchable.site/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
  const pdf=await browser.pdf(url);
  const key="glow-snapshots/"+encodeURIComponent(journey.journey_id)+".pdf";
  const pdfUrl=await storage.put(key,pdf,"application/pdf");
  const rawToken=base64url(crypto.getRandomValues(new Uint8Array(32)));
  const tokenHash=await sha256(rawToken);
  await db.query("INSERT INTO glow_access_tokens (journey_id,token_hash,token_type,expires_at) VALUES ($1,$2,'FREE_CONTINUITY',now()+interval '30 days')",[journey.id,tokenHash]);
- const continuityUrl="https://i5g7yz.hatchable.site/continue?t="+encodeURIComponent(rawToken);
+ const continuityUrl="https://glow-ai-v01.hatchable.site/continue?t="+encodeURIComponent(rawToken);
  let emailSent=false;
  if(sendEmail){
   await email.send({to:recipient,subject:"Your GLOW AI™ Glow Snapshot is ready ✨",html:`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#191715"><h1 style="font-family:Georgia,serif">Your GLOW Snapshot™ is ready.</h1><p>Your private Glow Snapshot has been prepared from your Glow Check.</p><p><b>Glow Journey ID:</b> ${esc(journey.journey_id)}</p><p><a href="${pdfUrl}" style="display:inline-block;padding:13px 18px;background:#191715;color:#fff;text-decoration:none;border-radius:999px">VIEW MY GLOW SNAPSHOT</a></p><p style="margin-top:18px"><a href="${continuityUrl}" style="display:inline-block;padding:13px 18px;background:#C4A66A;color:#191715;text-decoration:none;border-radius:999px">CONTINUE MY GLOW JOURNEY</a></p><p>When you're ready, you can continue from your existing results and unlock your Personal Glow Plan™ — no new selfie or analysis required.</p><p style="font-size:12px;color:#6d675f">This private link gives access to your Glow Journey. Please keep it secure. Your plan is based on visible appearance characteristics and is not a medical assessment.</p><p>SEE YOUR GLOW. START YOUR JOURNEY.</p></div>`});

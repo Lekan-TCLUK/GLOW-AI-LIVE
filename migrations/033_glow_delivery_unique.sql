@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS uq_glow_delivery_events_journey_type ON glow_delivery_events (journey_id, delivery_type);
