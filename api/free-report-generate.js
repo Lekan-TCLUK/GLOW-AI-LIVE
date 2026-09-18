@@ -27,7 +27,7 @@ export default async function(req,res){
   const journeyId="GJ-"+crypto.randomUUID().replaceAll("-","").slice(0,8).toUpperCase();
   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score)])).rows[0];
  }
- const url="https://glow-ai-v01.hatchable.site/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
+ const url="https://i5g7yz.hatchable.site/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
  const pdf=await browser.pdf(url);
  const key="glow-snapshots/"+encodeURIComponent(journey.journey_id)+".pdf";
  const pdfUrl=await storage.put(key,pdf,"application/pdf");

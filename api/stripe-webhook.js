@@ -9,7 +9,7 @@ function esc(s) {
 
 async function ensurePdf(journey) {
   if (journey.pdf_url) return journey.pdf_url;
-  const htmlUrl = "https://glow-ai-v01.hatchable.site/api/report-html?journey_id=" + encodeURIComponent(journey.journey_id);
+  const htmlUrl = "https://i5g7yz.hatchable.site/api/report-html?journey_id=" + encodeURIComponent(journey.journey_id);
   const pdf = await browser.pdf(htmlUrl);
   const pdfUrl = await storage.put("glow-plans/" + journey.journey_id + ".pdf", pdf, "application/pdf");
   await db.query("UPDATE glow_journeys SET pdf_url = $1 WHERE journey_id = $2", [pdfUrl, journey.journey_id]);

@@ -3,7 +3,7 @@ import { db, email } from "hatchable";
 export const access = "scheduler";
 export const methods = ["POST"];
 
-const BASE_URL = "https://glow-ai-v01.hatchable.site";
+const BASE_URL = "https://i5g7yz.hatchable.site";
 
 function esc(s) {
   return String(s || "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
