@@ -1,5 +1,5 @@
 import { db, browser, storage } from "hatchable";
-import { enqueueCustomerEmail } from "lib/customer-email.js";
+import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
 import { ensureAffiliateAttribution } from "lib/affiliate-attribution.js";
 
 export const access="public";
@@ -28,8 +28,6 @@ export default async function(req,res){
   const sessionId=String(req.body?.sessionId||"").trim();
   const recipient=String(req.body?.email||"").trim().toLowerCase();
   const sendEmail=Boolean(req.body?.sendEmail);
-  const marketingEmailOptIn=Boolean(req.body?.marketingEmailOptIn);
-  const captureEmail=sendEmail&&validEmail(recipient);
   const referral=String(req.body?.referral||"").trim();
   const suppliedAffiliate=req.body?.affiliate&&typeof req.body.affiliate==="object"?req.body.affiliate:null;
   const suppliedCampaign=req.body?.campaign&&typeof req.body.campaign==="object"?req.body.campaign:null;
@@ -42,8 +40,8 @@ export default async function(req,res){
 
   if(journey){
    analysis={analysis_json:journey.initial_analysis_json,overall_score:journey.initial_score};
-   if((captureEmail && journey.email !== recipient) || (referral && journey.rewardful_referral !== referral) || (captureEmail && !journey.email_captured_at) || (marketingEmailOptIn && !journey.marketing_email_opt_in)){
-    journey=(await db.query("UPDATE glow_journeys SET email=CASE WHEN $1 THEN $2 ELSE email END, email_captured_at=CASE WHEN $1 THEN COALESCE(email_captured_at,now()) ELSE email_captured_at END, marketing_email_opt_in=CASE WHEN $3 THEN true ELSE marketing_email_opt_in END, marketing_email_opt_in_at=CASE WHEN $3 THEN COALESCE(marketing_email_opt_in_at,now()) ELSE marketing_email_opt_in_at END, rewardful_referral=COALESCE(NULLIF($4,''), rewardful_referral) WHERE id=$5 RETURNING *",[captureEmail,recipient,marketingEmailOptIn,referral,journey.id])).rows[0];
+   if(referral&&journey.rewardful_referral!==referral){
+    journey=(await db.query("UPDATE glow_journeys SET rewardful_referral=COALESCE(NULLIF($1,''),rewardful_referral) WHERE id=$2 RETURNING *",[referral,journey.id])).rows[0];
    }
   }else{
    const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[sessionId]);
@@ -52,7 +50,7 @@ export default async function(req,res){
    const assessment=(await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at DESC LIMIT 1",[sessionId])).rows[0];
    if(!assessment)return res.status(409).json({error:"Your Glow assessment could not be linked. Please run your Glow Check again."});
    const journeyId="GJ-"+crypto.randomUUID().replaceAll("-","").slice(0,8).toUpperCase();
-   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,email_captured_at,marketing_email_opt_in,marketing_email_opt_in_at,initial_assessment_id,initial_analysis_json,initial_score,rewardful_referral) VALUES ($1,$2,$3,CASE WHEN $3 IS NOT NULL THEN now() ELSE NULL END,$4,CASE WHEN $4 THEN now() ELSE NULL END,$5,$6,$7,$8) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,marketingEmailOptIn,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score),referral||null])).rows[0];
+   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score,rewardful_referral) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score),referral||null])).rows[0];
   }
 
   const url=baseUrl+"/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
@@ -80,15 +78,12 @@ export default async function(req,res){
     base_url:baseUrl,
     rewardful_referral:carriedReferral||null
    });
-   emailSent=Boolean(queued.sent);
    emailQueued=Boolean(queued.queued);
    emailDeliveryId=queued.deliveryId||null;
-
-   // Do not block the customer's result screen on the external email provider.
-   // The durable delivery queue/retry job will process the email after this response.
-   // This keeps the Free Glow Check responsive even if the provider is slow or temporarily unavailable.
-   if(emailQueued){
-    emailSent=false;
+   if(queued.deliveryId){
+    const processed=await processCustomerEmail(queued.deliveryId);
+    emailSent=Boolean(processed.sent);
+    emailQueued=!emailSent&&Boolean(queued.queued);
    }
   }
 
