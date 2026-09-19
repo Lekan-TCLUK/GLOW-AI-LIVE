@@ -1,0 +1,1 @@
+ALTER TABLE glow_delivery_events ADD COLUMN IF NOT EXISTS delivery_context jsonb NOT NULL DEFAULT '{}'::jsonb
