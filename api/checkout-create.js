@@ -32,21 +32,21 @@ export default async function(req, res) {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
   const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
-  const referral = String(suppliedReferral || "").trim();
+  let referral = String(suppliedReferral || "").trim();
   if (legalAccepted !== true || digitalAccepted !== true) return res.status(400).json({ error: "Please accept the Terms & Conditions and confirm immediate digital delivery before continuing." });
   let email = String(suppliedEmail || "").trim().toLowerCase();
   let sessionId = String(suppliedSessionId || "").trim();
   let continuityJourneyId = null;
   if(continuityToken){
     const tokenHash=await sha256(String(continuityToken).trim());
-    const tq=await db.query("SELECT j.id,j.journey_id,j.session_id,j.email,j.payment_status,j.stripe_session_id,j.pdf_url,j.email_sent_at FROM glow_access_tokens t JOIN glow_journeys j ON j.id=t.journey_id WHERE t.token_hash=$1 AND t.token_type='FREE_CONTINUITY' AND t.revoked_at IS NULL AND t.expires_at>now() LIMIT 1",[tokenHash]);
+    const tq=await db.query("SELECT j.id,j.journey_id,j.session_id,j.email,j.payment_status,j.stripe_session_id,j.pdf_url,j.email_sent_at,j.rewardful_referral FROM glow_access_tokens t JOIN glow_journeys j ON j.id=t.journey_id WHERE t.token_hash=$1 AND t.token_type='FREE_CONTINUITY' AND t.revoked_at IS NULL AND t.expires_at>now() LIMIT 1",[tokenHash]);
     if(!tq.rows[0]) return res.status(404).json({error:"This Glow Journey link has expired or is no longer available."});
-    const linked=tq.rows[0]; continuityJourneyId=linked.id; sessionId=linked.session_id; if(!email)email=String(linked.email||"").trim().toLowerCase();
+    const linked=tq.rows[0]; continuityJourneyId=linked.id; sessionId=linked.session_id; if(!email)email=String(linked.email||"").trim().toLowerCase(); if(!referral)referral=String(linked.rewardful_referral||"").trim();
   }
   if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "A valid email is required." });
   if (!sessionId) return res.status(400).json({ error: "Glow session is required." });
 
-  const existing = continuityJourneyId ? await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
+  const existing = continuityJourneyId ? await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
   if (existing.rows[0]?.payment_status === "paid" && existing.rows[0]?.stripe_session_id) {
     return res.json({
       alreadyPaid: true,
@@ -61,16 +61,17 @@ export default async function(req, res) {
   const assessment = await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at DESC LIMIT 1", [String(sessionId)]);
   if (!assessment.rows[0]) return res.status(409).json({ error: "Your Glow assessment could not be linked. Please run your Glow Check again." });
 
+  if(!referral && existing.rows[0]?.rewardful_referral) referral=String(existing.rows[0].rewardful_referral).trim();
   const journeyId = existing.rows[0]?.journey_id || ("GJ-" + crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase());
   if (!existing.rows[0]) {
     await db.query(
-      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score, terms_accepted_at, privacy_acknowledged_at, digital_content_accepted_at, terms_version, privacy_version) VALUES ($1, $2, $3, $4, $5, $6, now(), now(), now(), $7, $8)",
-      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40)]
+      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score, rewardful_referral, terms_accepted_at, privacy_acknowledged_at, digital_content_accepted_at, terms_version, privacy_version) VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now(), now(), $8, $9)",
+      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score), referral||null, String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40)]
     );
   } else {
     await db.query(
-      "UPDATE glow_journeys SET email = $1, terms_accepted_at = COALESCE(terms_accepted_at, now()), privacy_acknowledged_at = COALESCE(privacy_acknowledged_at, now()), digital_content_accepted_at = COALESCE(digital_content_accepted_at, now()), terms_version = COALESCE(terms_version, $2), privacy_version = COALESCE(privacy_version, $3) WHERE id = $4",
-      [String(email).trim().toLowerCase(), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), existing.rows[0].id]
+      "UPDATE glow_journeys SET email = $1, rewardful_referral = COALESCE(NULLIF($5,''), rewardful_referral), terms_accepted_at = COALESCE(terms_accepted_at, now()), privacy_acknowledged_at = COALESCE(privacy_acknowledged_at, now()), digital_content_accepted_at = COALESCE(digital_content_accepted_at, now()), terms_version = COALESCE(terms_version, $2), privacy_version = COALESCE(privacy_version, $3) WHERE id = $4",
+      [String(email).trim().toLowerCase(), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), existing.rows[0].id, referral]
     );
   }
 

@@ -14,7 +14,6 @@ const ALLOWED_APP_HOSTS=new Set([
 function validEmail(v){return /^\S+@\S+\.\S+$/.test(String(v||"").trim());}
 function base64url(bytes){let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");}
 async function sha256(value){const bytes=new TextEncoder().encode(value);const hash=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");}
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
 function getAppBaseUrl(req){
   const forwardedHost=String(req.headers?.["x-forwarded-host"]||"").split(",")[0].trim().toLowerCase();
@@ -28,6 +27,7 @@ export default async function(req,res){
   const sessionId=String(req.body?.sessionId||"").trim();
   const recipient=String(req.body?.email||"").trim().toLowerCase();
   const sendEmail=Boolean(req.body?.sendEmail);
+  const referral=String(req.body?.referral||"").trim();
   if(!sessionId)return res.status(400).json({error:"Glow Check session is required."});
   if(sendEmail&&!validEmail(recipient))return res.status(400).json({error:"Please enter a valid email address."});
 
@@ -37,8 +37,8 @@ export default async function(req,res){
 
   if(journey){
    analysis={analysis_json:journey.initial_analysis_json,overall_score:journey.initial_score};
-   if(sendEmail && journey.email !== recipient){
-    journey=(await db.query("UPDATE glow_journeys SET email=$1 WHERE id=$2 RETURNING *",[recipient,journey.id])).rows[0];
+   if((sendEmail && journey.email !== recipient) || (referral && journey.rewardful_referral !== referral)){
+    journey=(await db.query("UPDATE glow_journeys SET email=CASE WHEN $1 THEN $2 ELSE email END, rewardful_referral=COALESCE(NULLIF($3,''), rewardful_referral) WHERE id=$4 RETURNING *",[sendEmail && journey.email !== recipient,recipient,referral,journey.id])).rows[0];
    }
   }else{
    const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[sessionId]);
@@ -47,7 +47,7 @@ export default async function(req,res){
    const assessment=(await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at DESC LIMIT 1",[sessionId])).rows[0];
    if(!assessment)return res.status(409).json({error:"Your Glow assessment could not be linked. Please run your Glow Check again."});
    const journeyId="GJ-"+crypto.randomUUID().replaceAll("-","").slice(0,8).toUpperCase();
-   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score)])).rows[0];
+   journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score,rewardful_referral) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score),referral||null])).rows[0];
   }
 
   const url=baseUrl+"/api/free-report-html?journey_id="+encodeURIComponent(journey.journey_id);
@@ -58,7 +58,8 @@ export default async function(req,res){
   const rawToken=base64url(crypto.getRandomValues(new Uint8Array(32)));
   const tokenHash=await sha256(rawToken);
   await db.query("INSERT INTO glow_access_tokens (journey_id,token_hash,token_type,expires_at) VALUES ($1,$2,'FREE_CONTINUITY',now()+interval '30 days')",[journey.id,tokenHash]);
-  const continuityUrl=baseUrl+"/continue?t="+encodeURIComponent(rawToken);
+  const carriedReferral=referral||String(journey.rewardful_referral||"").trim();
+  const continuityUrl=baseUrl+"/continue?t="+encodeURIComponent(rawToken)+(carriedReferral?"&referral="+encodeURIComponent(carriedReferral):"");
 
   let emailSent=false;
   let emailQueued=false;
@@ -68,7 +69,8 @@ export default async function(req,res){
    const queued=await enqueueCustomerEmail(journey.journey_id,"EMAIL_FREE_SNAPSHOT",{
     pdf_url:pdfUrl,
     continuity_url:continuityUrl,
-    base_url:baseUrl
+    base_url:baseUrl,
+    rewardful_referral:carriedReferral||null
    });
    emailSent=Boolean(queued.sent);
    emailQueued=Boolean(queued.queued);
@@ -81,15 +83,7 @@ export default async function(req,res){
    }
   }
 
-  return res.json({
-   sessionId,
-   pdfUrl,
-   emailSent,
-   emailQueued,
-   emailDeliveryId,
-   journeyId:journey.journey_id,
-   continuityUrl
-  });
+  return res.json({sessionId,pdfUrl,emailSent,emailQueued,emailDeliveryId,journeyId:journey.journey_id,continuityUrl,affiliateReferralPersisted:Boolean(carriedReferral)});
  }catch(error){
   console.error("Free report generation failed",error);
   return res.status(500).json({error:"We could not prepare your free report. Please try again."});
