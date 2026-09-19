@@ -12,6 +12,9 @@ function cors(res) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 }
 
+const SUPPORTED_LOCALES={en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT"};
+function normaliseLanguage(value){const v=String(value||"en").trim().toLowerCase();return SUPPORTED_LOCALES[v]?v:"en";}
+function normaliseLocale(language,value){const expected=SUPPORTED_LOCALES[language];const v=String(value||expected).trim();return v===expected?v:expected;}
 function formEncode(obj) {
   const p = new URLSearchParams();
   for (const [k,v] of Object.entries(obj)) p.set(k, String(v));
@@ -19,12 +22,14 @@ function formEncode(obj) {
 }
 
 function safeReturnUrl(value) {
+  const fallback = "https://www.glow-ai.co/";
   try {
     const u = new URL(String(value || ""));
-    if (u.protocol !== "https:") return "https://glow-ai-v3-connected-hatchable.vercel.app/";
-    if (u.hostname.endsWith(".vercel.app") || u.hostname === "glowai.com" || u.hostname.endsWith(".hatchable.site")) return u.origin + "/";
+    if (u.protocol !== "https:") return fallback;
+    const host = u.hostname.toLowerCase();
+    if (host === "glow-ai.co" || host === "www.glow-ai.co") return "https://www.glow-ai.co/";
   } catch {}
-  return "https://glow-ai-v3-connected-hatchable.vercel.app/";
+  return fallback;
 }
 
 export default async function(req, res) {
@@ -32,7 +37,11 @@ export default async function(req, res) {
   if (req.method === "OPTIONS") return res.status(204).send("");
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
-  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, affiliate: suppliedAffiliate, campaign: suppliedCampaign, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
+  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, affiliate: suppliedAffiliate, campaign: suppliedCampaign, legalAccepted, digitalAccepted, termsVersion, privacyVersion, language: suppliedLanguage, locale: suppliedLocale, termsLanguage: suppliedTermsLanguage, privacyLanguage: suppliedPrivacyLanguage } = req.body || {};
+  const language=normaliseLanguage(suppliedLanguage);
+  const locale=normaliseLocale(language,suppliedLocale);
+  const termsLanguage=normaliseLanguage(suppliedTermsLanguage||language);
+  const privacyLanguage=normaliseLanguage(suppliedPrivacyLanguage||language);
   let referral = String(suppliedReferral || "").trim();
   if (legalAccepted !== true || digitalAccepted !== true) return res.status(400).json({ error: "Please accept the Terms & Conditions and confirm immediate digital delivery before continuing." });
   let email = String(suppliedEmail || "").trim().toLowerCase();
@@ -66,13 +75,13 @@ export default async function(req, res) {
   const journeyId = existing.rows[0]?.journey_id || ("GJ-" + crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase());
   if (!existing.rows[0]) {
     await db.query(
-      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score, rewardful_referral, terms_accepted_at, privacy_acknowledged_at, digital_content_accepted_at, terms_version, privacy_version) VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now(), now(), $8, $9)",
-      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score), referral||null, String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40)]
+      "INSERT INTO glow_journeys (journey_id, session_id, email, initial_assessment_id, initial_analysis_json, initial_score, rewardful_referral, terms_accepted_at, privacy_acknowledged_at, digital_content_accepted_at, terms_version, privacy_version, language, locale, terms_language, privacy_language) VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now(), now(), $8, $9, $10, $11, $12, $13)",
+      [journeyId, String(sessionId), String(email).trim().toLowerCase(), assessment.rows[0].id, JSON.stringify(analysis.rows[0].analysis_json), Number(analysis.rows[0].overall_score), referral||null, String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), language, locale, termsLanguage, privacyLanguage]
     );
   } else {
     await db.query(
-      "UPDATE glow_journeys SET email = $1, rewardful_referral = COALESCE(NULLIF($5,''), rewardful_referral), terms_accepted_at = COALESCE(terms_accepted_at, now()), privacy_acknowledged_at = COALESCE(privacy_acknowledged_at, now()), digital_content_accepted_at = COALESCE(digital_content_accepted_at, now()), terms_version = COALESCE(terms_version, $2), privacy_version = COALESCE(privacy_version, $3) WHERE id = $4",
-      [String(email).trim().toLowerCase(), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), existing.rows[0].id, referral]
+      "UPDATE glow_journeys SET email = $1, rewardful_referral = COALESCE(NULLIF($5,''), rewardful_referral), terms_accepted_at = COALESCE(terms_accepted_at, now()), privacy_acknowledged_at = COALESCE(privacy_acknowledged_at, now()), digital_content_accepted_at = COALESCE(digital_content_accepted_at, now()), terms_version = COALESCE(terms_version, $2), privacy_version = COALESCE(privacy_version, $3), language = $6, locale = $7, terms_language = $8, privacy_language = $9 WHERE id = $4",
+      [String(email).trim().toLowerCase(), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), existing.rows[0].id, referral, language, locale, termsLanguage, privacyLanguage]
     );
   }
 

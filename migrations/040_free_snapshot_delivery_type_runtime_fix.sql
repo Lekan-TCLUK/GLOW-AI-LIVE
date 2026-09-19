@@ -1,0 +1,1 @@
+ALTER TABLE glow_delivery_events DROP CONSTRAINT IF EXISTS glow_delivery_events_delivery_type_check, ADD CONSTRAINT glow_delivery_events_delivery_type_check CHECK (delivery_type IN ('EMAIL_PDF','EMAIL_FREE_SNAPSHOT','EMAIL_JOURNEY_LINK','SECURE_RESEND'));

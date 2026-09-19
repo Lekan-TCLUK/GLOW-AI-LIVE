@@ -77,7 +77,7 @@ export default async function(req, res) {
       emailError = String(mailError?.message || mailError);
       console.error("Plan email failed", mailError);
     }
-    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl, emailSent, emailError });
+    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl, emailSent, emailError, language: updated.language || "en", locale: updated.locale || "en-GB" });
   } catch (error) {
     console.error("Payment verification error", error);
     return res.status(502).json({ error: "We couldn't verify the payment yet. Please refresh and try again." });

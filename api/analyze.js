@@ -8,6 +8,7 @@ import { CALIBRATION_VERSION, CALIBRATION_STATUS } from "../lib/vision/calibrati
 import { ENGINE_VERSION } from "../lib/engine/scoring.js";
 import { RANKING_ENGINE_VERSION } from "../lib/engine/ranking.js";
 import { ARCHETYPE_ENGINE_VERSION } from "../lib/engine/archetypes.js";
+import { GLOW_FLOW_VERSION } from "../lib/engine/flow.js";
 import { overallBand } from "../lib/engine/status.js";
 
 export const access = "public";
@@ -50,7 +51,7 @@ function buildLegacyAnalysis(result, observations) {
     categories[key] = {
       score: result.scores[dimension],
       observations: Array.isArray(observations.dimensions[dimension]?.notes)
-        ? observations.dimensions[dimension].notes.slice(0, 2).map(cleanText)
+        ? observations.dimensions[dimension].notes.slice(0, 4).map(cleanText).filter(note => note.length >= 12).slice(0, 2)
         : []
     };
   }
@@ -61,6 +62,7 @@ function buildLegacyAnalysis(result, observations) {
     band: overallBand(Math.round(DIMENSIONS.reduce((sum, d) => sum + result.scores[d], 0) / DIMENSIONS.length)),
     top3: result.top3,
     archetype: result.archetype,
+    flow_version: GLOW_FLOW_VERSION,
     calibration_version: CALIBRATION_VERSION,
     scoring_version: ENGINE_VERSION,
     ranking_version: RANKING_ENGINE_VERSION,
@@ -75,6 +77,8 @@ export default async function (req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const body = req.body || {};
+  const language = ["en","fr","es","pt"].includes(String(body.language||"").toLowerCase()) ? String(body.language).toLowerCase() : "en";
+  const locale = ({en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT"})[language];
   const imageData = body.imageData;
   const freeLegalAccepted = body.freeLegalAccepted === true;
   const sessionId = String(body.sessionId || crypto.randomUUID()).slice(0, 128);
@@ -85,13 +89,13 @@ export default async function (req, res) {
   if (!imageData || typeof imageData !== "string" || !imageData.startsWith("data:image/")) {
     return res.status(400).json({ error: "A valid image is required." });
   }
+  if (!/^data:image\/(jpeg|jpg|png|webp|gif);base64,/i.test(imageData)) {
+    return res.status(415).json({ error: "Please upload a JPEG, PNG, WebP, or GIF image." });
+  }
   if (imageData.length > 16 * 1024 * 1024) {
     return res.status(413).json({ error: "Image is too large. Please use a smaller photo." });
   }
 
-  // A session that already owns a Journey has an immutable Day-0 snapshot.
-  // Return that snapshot instead of creating a second customer-facing Day-0
-  // analysis that could diverge from the Journey, PDF or future Day-30 baseline.
   const existingJourney = await db.query(
     "SELECT journey_id, initial_assessment_id, initial_analysis_json, initial_score FROM glow_journeys WHERE session_id = $1 LIMIT 1",
     [sessionId]
@@ -103,6 +107,7 @@ export default async function (req, res) {
       assessmentId: j.initial_assessment_id || null,
       journeyId: j.journey_id,
       analysis: j.initial_analysis_json,
+      flow_version: j.initial_analysis_json?.flow_version || GLOW_FLOW_VERSION,
       calibration_version: j.initial_analysis_json?.calibration_version || CALIBRATION_VERSION,
       calibration_status: CALIBRATION_STATUS,
       quality_gate_version: QUALITY_GATE_VERSION,
@@ -130,7 +135,8 @@ export default async function (req, res) {
     }
   }
 
-  const prompt = `${VISION_SYSTEM_PROMPT}\n\nFor this image, first perform the strict quality gate. If the image contains anything other than exactly one visible human face, set quality to REJECT and do not score. Return ONLY valid JSON in this exact shape:\n{"quality":{"status":"PASS|RETRY|REJECT","reason_codes":[],"face_count":1,"subject_type":"HUMAN_FACE","is_screenshot_or_collage":false},"dimensions":{"radiance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"hydration_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"evenness":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"texture":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"under_eye_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"overall_vitality":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]}},"limitations":[]}\nUse only the allowed levels. Notes must describe visible appearance only. If the image cannot support reliable observation, set quality to RETRY or REJECT and do not guess the dimensions.`;
+  const languageInstruction = language === "en" ? "Write the visible-only observation notes in English." : language === "fr" ? "Write the visible-only observation notes in French (français)." : language === "es" ? "Write the visible-only observation notes in Spanish (español)." : "Write the visible-only observation notes in European Portuguese (português europeu).";
+  const prompt = `${VISION_SYSTEM_PROMPT}\n\n${languageInstruction} Keep the JSON keys and enum values exactly as specified; only customer-facing notes should be localized.\n\nFor this image, first perform the strict quality gate. If the image contains anything other than exactly one visible human face, set quality to REJECT and do not score. Return ONLY valid JSON in this exact shape:\n{"quality":{"status":"PASS|RETRY|REJECT","reason_codes":[],"face_count":1,"subject_type":"HUMAN_FACE","is_screenshot_or_collage":false},"dimensions":{"radiance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"hydration_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"evenness":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"texture":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"under_eye_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"overall_vitality":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]}},"limitations":[]}\nUse only the allowed levels. Notes must describe visible appearance only. If the image cannot support reliable observation, set quality to RETRY or REJECT and do not guess the dimensions.`;
 
   try {
     const aiResult = await ai.generateText({
@@ -146,7 +152,7 @@ export default async function (req, res) {
 
     let observations;
     try {
-      const text = String(aiResult.text || "").replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+      const text = String(aiResult.text || "").replace(/^\`\`\`json\s*/i, "").replace(/\s*\`\`\`$/i, "").trim();
       observations = JSON.parse(text);
     } catch {
       return res.status(502).json({ error: "The visual assessment could not be read. Please try again." });
@@ -224,6 +230,7 @@ export default async function (req, res) {
       sessionId,
       assessmentId,
       analysis,
+      flow_version: GLOW_FLOW_VERSION,
       calibration_version: CALIBRATION_VERSION,
       calibration_status: CALIBRATION_STATUS,
       quality_gate_version: QUALITY_GATE_VERSION,

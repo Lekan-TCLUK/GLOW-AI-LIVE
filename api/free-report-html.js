@@ -12,15 +12,17 @@ export default async function(req,res){
  let renderId=sessionId;
  if(journeyId){
   if(!/^GJ-[A-Z0-9]{8,20}$/.test(journeyId))return res.status(400).send("Glow Journey ID is invalid");
-  const q=await db.query("SELECT initial_analysis_json,created_at FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[journeyId]);
+  const q=await db.query("SELECT initial_analysis_json,created_at,language,locale FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[journeyId]);
   if(!q.rows[0])return res.status(404).send("Glow Journey not found");
   a={...(q.rows[0].initial_analysis_json||{}),created_at:q.rows[0].created_at};
+  a.__language=q.rows[0].language||"en";a.__locale=q.rows[0].locale||"en-GB";
   renderId=journeyId;
  }else{
   if(!sessionId||sessionId.length>128)return res.status(400).send("Glow Check session is required");
   const journey=await db.query("SELECT journey_id,initial_analysis_json,created_at FROM glow_journeys WHERE session_id = $1 LIMIT 1",[sessionId]);
   if(journey.rows[0]){
    a={...(journey.rows[0].initial_analysis_json||{}),created_at:journey.rows[0].created_at};
+   a.__language=journey.rows[0].language||"en";a.__locale=journey.rows[0].locale||"en-GB";
    renderId=journey.rows[0].journey_id;
   }else{
    const q=await db.query("SELECT * FROM glow_analyses WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",[sessionId]);
@@ -28,7 +30,7 @@ export default async function(req,res){
    a={...(q.rows[0].analysis_json||{}),created_at:q.rows[0].created_at};
   }
  }
- const html=renderFreeReport(a,{sessionId:renderId});
+ const html=renderFreeReport(a,{sessionId:renderId,language:a.__language||"en",locale:a.__locale||"en-GB"});
  res.setHeader("Content-Type","text/html; charset=utf-8");
  return res.send(html);
  const c=a.categories||{};
