@@ -31,7 +31,8 @@ export default async function(req, res) {
   if (req.method === "OPTIONS") return res.status(204).send("");
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
-  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
+  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
+  const referral = String(suppliedReferral || "").trim();
   if (legalAccepted !== true || digitalAccepted !== true) return res.status(400).json({ error: "Please accept the Terms & Conditions and confirm immediate digital delivery before continuing." });
   let email = String(suppliedEmail || "").trim().toLowerCase();
   let sessionId = String(suppliedSessionId || "").trim();
@@ -76,6 +77,7 @@ export default async function(req, res) {
   const successBase = safeReturnUrl(returnUrl);
   const params = formEncode({
     mode: "payment",
+    customer_creation: "always",
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][product_data][name]": "Personal Glow Plan™",
     "line_items[0][price_data][product_data][description]": "Personalised Glow Analysis, 7-Day Reset, 30-Day Journey and one Day-30 Glow Re-Check.",
@@ -84,7 +86,7 @@ export default async function(req, res) {
     customer_email: String(email).trim().toLowerCase(),
     "metadata[journey_id]": journeyId,
     "metadata[session_id]": String(sessionId),
-    client_reference_id: journeyId,
+    ...(referral ? { client_reference_id: referral, "metadata[referral]": referral } : {}),
     success_url: successBase + "?payment=success&session_id={CHECKOUT_SESSION_ID}",
     cancel_url: successBase + "?payment=cancelled"
   });
