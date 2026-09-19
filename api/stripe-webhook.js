@@ -1,5 +1,6 @@
 import { db, scheduler } from "hatchable";
 import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
+import { markAffiliatePayment } from "lib/affiliate-attribution.js";
 
 export const access = "public";
 export const methods = ["POST"];
@@ -53,6 +54,12 @@ async function activateJourney(session) {
   );
 
   const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];
+
+  try {
+    await markAffiliatePayment({journeyInternalId:updated.id,stripeSessionId:session.id,stripeCustomerId:session.customer||"",paymentStatus:"paid"});
+  } catch (affiliateError) {
+    console.error("Affiliate attribution payment update failed", affiliateError);
+  }
 
   if (updated.email && updated.journey_started_at && !updated.day30_completed) {
     const reminderAt = new Date(new Date(updated.journey_started_at).getTime() + 28 * 24 * 60 * 60 * 1000);

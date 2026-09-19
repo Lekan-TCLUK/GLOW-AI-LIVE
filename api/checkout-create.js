@@ -1,4 +1,5 @@
 import { db } from "hatchable";
+import { ensureAffiliateAttribution } from "lib/affiliate-attribution.js";
 
 async function sha256(value){const bytes=new TextEncoder().encode(value);const hash=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");}
 
@@ -31,7 +32,7 @@ export default async function(req, res) {
   if (req.method === "OPTIONS") return res.status(204).send("");
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
-  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
+  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, affiliate: suppliedAffiliate, campaign: suppliedCampaign, legalAccepted, digitalAccepted, termsVersion, privacyVersion } = req.body || {};
   let referral = String(suppliedReferral || "").trim();
   if (legalAccepted !== true || digitalAccepted !== true) return res.status(400).json({ error: "Please accept the Terms & Conditions and confirm immediate digital delivery before continuing." });
   let email = String(suppliedEmail || "").trim().toLowerCase();
@@ -76,6 +77,10 @@ export default async function(req, res) {
   }
 
   const successBase = safeReturnUrl(returnUrl);
+  const journeyRecord = (await db.query("SELECT id,email FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];
+  if(referral && journeyRecord){
+    await ensureAffiliateAttribution({journeyInternalId:journeyRecord.id,referralId:referral,customerEmail:journeyRecord.email,affiliateSnapshot:suppliedAffiliate,campaignSnapshot:suppliedCampaign});
+  }
   const params = formEncode({
     mode: "payment",
     customer_creation: "always",
@@ -104,5 +109,8 @@ export default async function(req, res) {
   }
 
   await db.query("UPDATE glow_journeys SET stripe_session_id = $1, email = $2 WHERE journey_id = $3", [stripe.id, String(email).trim().toLowerCase(), journeyId]);
+  if(referral && journeyRecord){
+    await ensureAffiliateAttribution({journeyInternalId:journeyRecord.id,referralId:referral,customerEmail:email,stripeSessionId:stripe.id,affiliateSnapshot:suppliedAffiliate,campaignSnapshot:suppliedCampaign});
+  }
   return res.json({ checkoutUrl: stripe.url, journeyId });
 }

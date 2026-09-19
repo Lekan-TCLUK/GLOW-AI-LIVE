@@ -8,3 +8,7 @@ expose = true
 [[secret]]
 name = "STRIPE_WEBHOOK_SECRET"
 expose = true
+
+[[secret]]
+name = "REWARDFUL_WEBHOOK_SECRET"
+expose = true

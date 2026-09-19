@@ -1,5 +1,6 @@
 import { db, browser, storage } from "hatchable";
 import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
+import { ensureAffiliateAttribution } from "lib/affiliate-attribution.js";
 
 export const access="public";
 export const methods=["POST"];
@@ -28,6 +29,8 @@ export default async function(req,res){
   const recipient=String(req.body?.email||"").trim().toLowerCase();
   const sendEmail=Boolean(req.body?.sendEmail);
   const referral=String(req.body?.referral||"").trim();
+  const suppliedAffiliate=req.body?.affiliate&&typeof req.body.affiliate==="object"?req.body.affiliate:null;
+  const suppliedCampaign=req.body?.campaign&&typeof req.body.campaign==="object"?req.body.campaign:null;
   if(!sessionId)return res.status(400).json({error:"Glow Check session is required."});
   if(sendEmail&&!validEmail(recipient))return res.status(400).json({error:"Please enter a valid email address."});
 
@@ -59,6 +62,9 @@ export default async function(req,res){
   const tokenHash=await sha256(rawToken);
   await db.query("INSERT INTO glow_access_tokens (journey_id,token_hash,token_type,expires_at) VALUES ($1,$2,'FREE_CONTINUITY',now()+interval '30 days')",[journey.id,tokenHash]);
   const carriedReferral=referral||String(journey.rewardful_referral||"").trim();
+  if(carriedReferral){
+   await ensureAffiliateAttribution({journeyInternalId:journey.id,referralId:carriedReferral,customerEmail:journey.email,affiliateSnapshot:suppliedAffiliate,campaignSnapshot:suppliedCampaign});
+  }
   const continuityUrl=baseUrl+"/continue?t="+encodeURIComponent(rawToken)+(carriedReferral?"&referral="+encodeURIComponent(carriedReferral):"");
 
   let emailSent=false;
