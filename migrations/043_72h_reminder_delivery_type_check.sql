@@ -1,0 +1,1 @@
+ALTER TABLE glow_delivery_events ADD CONSTRAINT glow_delivery_events_delivery_type_check CHECK (delivery_type IN ('EMAIL_PDF','EMAIL_FREE_SNAPSHOT','EMAIL_24H_REMINDER','EMAIL_72H_REMINDER','EMAIL_JOURNEY_LINK'))

@@ -1,0 +1,1 @@
+ALTER TABLE glow_delivery_events DROP CONSTRAINT IF EXISTS glow_delivery_events_delivery_type_check

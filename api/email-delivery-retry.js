@@ -15,7 +15,7 @@ export default async function(req, res) {
     }
 
     const q = await db.query(
-      "SELECT id FROM glow_delivery_events WHERE delivery_type IN ('EMAIL_PDF','EMAIL_FREE_SNAPSHOT','EMAIL_JOURNEY_LINK') AND (status IN ('QUEUED','FAILED') OR (status='SENDING' AND queued_at < now()-interval '15 minutes')) ORDER BY queued_at ASC LIMIT 4"
+      "SELECT id FROM glow_delivery_events WHERE delivery_type IN ('EMAIL_PDF','EMAIL_FREE_SNAPSHOT','EMAIL_24H_REMINDER','EMAIL_72H_REMINDER','EMAIL_JOURNEY_LINK') AND (status IN ('QUEUED','FAILED') OR (status='SENDING' AND queued_at < now()-interval '15 minutes')) ORDER BY queued_at ASC LIMIT 4"
     );
 
     const results = [];

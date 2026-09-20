@@ -22,12 +22,12 @@ function formEncode(obj) {
 }
 
 function safeReturnUrl(value) {
-  const fallback = "https://www.glow-ai.co/";
+  const fallback = "https://app.glow-ai.co/";
   try {
     const u = new URL(String(value || ""));
     if (u.protocol !== "https:") return fallback;
     const host = u.hostname.toLowerCase();
-    if (host === "glow-ai.co" || host === "www.glow-ai.co") return "https://www.glow-ai.co/";
+    if (host === "app.glow-ai.co") return "https://app.glow-ai.co/";
   } catch {}
   return fallback;
 }

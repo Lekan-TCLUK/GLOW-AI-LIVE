@@ -1,4 +1,4 @@
-import { db, browser, storage } from "hatchable";
+import { db, browser, storage, scheduler } from "hatchable";
 import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
 import { ensureAffiliateAttribution } from "lib/affiliate-attribution.js";
 
@@ -11,7 +11,7 @@ const ALLOWED_APP_HOSTS=new Set([
   "glow-ai.io",
   "www.glow-ai.io",
   "glow-ai.co",
-  "www.glow-ai.co"
+  "app.glow-ai.co"
 ]);
 
 function validEmail(v){return /^\S+@\S+\.\S+$/.test(String(v||"").trim());}
@@ -120,6 +120,22 @@ export default async function(req,res){
     const processed=await processCustomerEmail(queued.deliveryId);
     emailSent=Boolean(processed.sent);
     emailQueued=!emailSent&&Boolean(queued.queued);
+   }
+   if (journey.email && journey.payment_status !== "paid" && !journey.day30_completed) {
+    try {
+     const reminderAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+     await scheduler.at(reminderAt.toISOString(), "/api/glow-24h-reminder", {
+      name: "glow24-" + journey.journey_id,
+      payload: { journeyId: journey.journey_id }
+     });
+     const reminder72At = new Date(Date.now() + 72 * 60 * 60 * 1000);
+     await scheduler.at(reminder72At.toISOString(), "/api/glow-72h-reminder", {
+      name: "glow72-" + journey.journey_id,
+      payload: { journeyId: journey.journey_id }
+     });
+    } catch (scheduleError) {
+     console.error("24-hour Glow reminder schedule failed", scheduleError);
+    }
    }
   }
 
