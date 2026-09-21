@@ -12,10 +12,14 @@ export default async function(req,res){
   if(j.payment_status!=="paid") return res.status(402).json({error:"This Glow Journey has not been completed as a paid plan."});
   let pdfUrl=j.pdf_url||null;
   if(pdfUrl && j.plan_version !== "PAID-REPORT-V2") pdfUrl=null;
-  if(!pdfUrl){
+  if(pdfUrl){
+    pdfUrl=await storage.urlPermanent("glow-plans/"+j.journey_id+".pdf");
+    await db.query("UPDATE glow_journeys SET pdf_url=$1 WHERE journey_id=$2",[pdfUrl,j.journey_id]);
+  } else {
     const htmlUrl="https://app.glow-ai.co/api/report-html?journey_id="+encodeURIComponent(j.journey_id);
     const pdf=await browser.pdf(htmlUrl);
-    pdfUrl=await storage.put("glow-plans/"+j.journey_id+".pdf",pdf,"application/pdf");
+    await storage.put("glow-plans/"+j.journey_id+".pdf",pdf,"application/pdf");
+    pdfUrl=await storage.urlPermanent("glow-plans/"+j.journey_id+".pdf");
     await db.query("UPDATE glow_journeys SET pdf_url=$1, plan_version='PAID-REPORT-V2' WHERE journey_id=$2",[pdfUrl,j.journey_id]);
   }
   return res.json({journeyId:j.journey_id,email:j.email,initialScore:j.initial_score,initialAnalysis:j.initial_analysis_json,day30Completed:j.day30_completed,day30Score:j.day30_score,day30Analysis:j.day30_analysis_json,pdfUrl,emailSent:Boolean(j.email_sent_at),language:j.language||"en",locale:j.locale||"en-GB"});
