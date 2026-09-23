@@ -12,7 +12,7 @@ function cors(res) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 }
 
-const SUPPORTED_LOCALES={en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT"};
+const SUPPORTED_LOCALES={en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT",de:"de-DE",it:"it-IT"};
 function normaliseLanguage(value){const v=String(value||"en").trim().toLowerCase();return SUPPORTED_LOCALES[v]?v:"en";}
 function normaliseLocale(language,value){const expected=SUPPORTED_LOCALES[language];const v=String(value||expected).trim();return v===expected?v:expected;}
 function formEncode(obj) {
@@ -27,7 +27,9 @@ function safeReturnUrl(value) {
     const u = new URL(String(value || ""));
     if (u.protocol !== "https:") return fallback;
     const host = u.hostname.toLowerCase();
-    if (host === "app.glow-ai.co") return "https://app.glow-ai.co/";
+    const allowed = new Set(["app.glow-ai.co"]);
+    if (!allowed.has(host)) return fallback;
+    return "https://" + host + (u.pathname || "/");
   } catch {}
   return fallback;
 }
@@ -37,7 +39,7 @@ export default async function(req, res) {
   if (req.method === "OPTIONS") return res.status(204).send("");
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return res.status(503).json({ error: "Payments are not configured yet." });
-  const { email: suppliedEmail, sessionId: suppliedSessionId, returnUrl, continuityToken, referral: suppliedReferral, affiliate: suppliedAffiliate, campaign: suppliedCampaign, legalAccepted, digitalAccepted, termsVersion, privacyVersion, language: suppliedLanguage, locale: suppliedLocale, termsLanguage: suppliedTermsLanguage, privacyLanguage: suppliedPrivacyLanguage } = req.body || {};
+  const { email: suppliedEmail, sessionId: suppliedSessionId, journeyId: suppliedJourneyId, returnUrl, continuityToken, referral: suppliedReferral, affiliate: suppliedAffiliate, campaign: suppliedCampaign, legalAccepted, digitalAccepted, termsVersion, privacyVersion, language: suppliedLanguage, locale: suppliedLocale, termsLanguage: suppliedTermsLanguage, privacyLanguage: suppliedPrivacyLanguage } = req.body || {};
   const language=normaliseLanguage(suppliedLanguage);
   const locale=normaliseLocale(language,suppliedLocale);
   const termsLanguage=normaliseLanguage(suppliedTermsLanguage||language);
@@ -53,10 +55,25 @@ export default async function(req, res) {
     if(!tq.rows[0]) return res.status(404).json({error:"This Glow Journey link has expired or is no longer available."});
     const linked=tq.rows[0]; continuityJourneyId=linked.id; sessionId=linked.session_id; if(!email)email=String(linked.email||"").trim().toLowerCase(); if(!referral)referral=String(linked.rewardful_referral||"").trim();
   }
+  let journeyEntryId = String(suppliedJourneyId || "").trim().toUpperCase();
+  if (journeyEntryId) {
+    if (!/^GJ-[A-Z0-9]{8,20}$/.test(journeyEntryId)) return res.status(400).json({ error: "Enter a valid Glow Journey ID." });
+    const jq = await db.query("SELECT id, journey_id, session_id, email, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyEntryId]);
+    if (!jq.rows[0]) return res.status(404).json({ error: "We couldn't find that Glow Journey ID." });
+    const linked = jq.rows[0];
+    // A stale local Journey ID must never override a newer Glow Check session.
+    // If both are supplied and they belong to different sessions, ignore the stale Journey ID and resolve by session below.
+    if (sessionId && linked.session_id && String(linked.session_id) !== sessionId) {
+      journeyEntryId = "";
+    } else {
+      if (!email) email = String(linked.email || "").trim().toLowerCase();
+      if (!sessionId) sessionId = String(linked.session_id || "").trim();
+    }
+  }
   if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "A valid email is required." });
   if (!sessionId) return res.status(400).json({ error: "Glow session is required." });
 
-  const existing = continuityJourneyId ? await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
+  const existing = continuityJourneyId ? await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE id = $1 LIMIT 1", [continuityJourneyId]) : journeyEntryId ? await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyEntryId]) : await db.query("SELECT id, journey_id, payment_status, stripe_session_id, pdf_url, email_sent_at, rewardful_referral FROM glow_journeys WHERE session_id = $1 LIMIT 1", [sessionId]);
   if (existing.rows[0]?.payment_status === "paid" && existing.rows[0]?.stripe_session_id) {
     return res.json({
       alreadyPaid: true,

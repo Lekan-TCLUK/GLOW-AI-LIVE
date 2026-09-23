@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GLOW AI™ — QA Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FEFDFB;--alabaster:#F7F2EA;--ink:#171513;--gold:#C4A66A;--gold2:#A7834E;--border:#E8E0D2;--muted:#756D63;--red:#9A5148;--green:#6C7D62}
+*{box-sizing:border-box}body{margin:0;background:var(--alabaster);color:var(--ink);font-family:Inter,Arial,sans-serif}.wrap{width:min(100%,920px);margin:auto;padding:28px 18px 50px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:24px}.eyebrow{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold2);font-weight:600}.title{font:500 34px/1.05 'Playfair Display',serif;margin:7px 0}.sub{font-size:11px;color:var(--muted);line-height:1.5;max-width:650px}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--border);background:#fff;border-radius:999px;padding:10px 14px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}.btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}.summary{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:9px;margin-bottom:20px}.stat{background:#fff;border:1px solid var(--border);border-radius:17px;padding:14px}.stat.dark{background:var(--ink);color:#fff}.stat-label{font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}.dark .stat-label{color:#bdb5aa}.stat-value{font:500 25px 'Playfair Display',serif;margin-top:5px}.progress{height:5px;background:#eee7dc;border-radius:99px;overflow:hidden;margin-top:10px}.progress i{display:block;height:100%;width:0;background:var(--gold);transition:.2s}.section{background:#fff;border:1px solid var(--border);border-radius:20px;margin-bottom:12px;overflow:hidden}.section-head{display:flex;justify-content:space-between;align-items:center;padding:16px 17px;background:#fbf8f2;border-bottom:1px solid var(--border)}.section-head h2{font:500 20px 'Playfair Display',serif;margin:0}.section-meta{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.tests{padding:4px 17px 8px}.test{display:grid;grid-template-columns:28px 1fr auto;gap:11px;align-items:start;padding:13px 0;border-bottom:1px solid #f0eadf}.test:last-child{border-bottom:0}.notes-panel{background:#fff;border:1px solid var(--border);border-radius:20px;padding:17px;margin:0 0 14px}.notes-panel h2{font:500 22px "Playfair Display",serif;margin:0 0 5px}.notes-panel p{font-size:9px;color:var(--muted);margin:0 0 10px;line-height:1.5}.notes-area{width:100%;min-height:150px;border:1px solid var(--border);border-radius:13px;background:#fbf8f2;padding:12px;font:400 10px/1.55 Inter,Arial,sans-serif;color:var(--ink);resize:vertical;outline:0}.notes-area:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(196,166,106,.12)}.notes-saved{font-size:8px;color:var(--green);margin-top:6px;min-height:12px}.test{display:grid;grid-template-columns:28px 1fr auto;gap:11px;align-items:start;padding:13px 0;border-bottom:1px solid #f0eadf}.test:last-child{border-bottom:0}.num{width:24px;height:24px;border-radius:50%;background:var(--alabaster);border:1px solid var(--border);display:grid;place-items:center;font:11px 'Playfair Display',serif;color:var(--gold2)}.test-title{font-size:11px;font-weight:600;line-height:1.35}.test-detail{font-size:9px;line-height:1.45;color:var(--muted);margin-top:3px}.choices{display:flex;gap:5px}.choice{border:1px solid var(--border);background:#fff;border-radius:999px;padding:7px 9px;font-size:8px;letter-spacing:.08em;cursor:pointer}.choice.pass.active{background:var(--green);border-color:var(--green);color:#fff}.choice.fail.active{background:var(--red);border-color:var(--red);color:#fff}.choice.skip.active{background:#8A8176;border-color:#8A8176;color:#fff}.note{grid-column:2/-1;width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:9px;line-height:1.45;outline:0;background:#fff;display:block;min-height:42px;resize:vertical}.note:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(196,166,106,.12)}.status{grid-column:2/-1;font-size:8px;text-transform:uppercase;letter-spacing:.12em;margin-top:-5px}.status.pass{color:var(--green)}.status.fail{color:var(--red)}.status.skip{color:#8A8176}.gold{color:var(--gold2)}.final{background:var(--ink);color:#fff;border-radius:20px;padding:20px;margin-top:18px}.final h2{font:500 23px 'Playfair Display',serif;margin:0 0 8px}.final p{font-size:10px;line-height:1.5;color:#c9c1b7;margin:0}.golden{margin-top:12px;padding:12px;border:1px solid #403c37;border-radius:13px;font-size:9px;line-height:1.5}.footer{margin-top:14px;text-align:center;font-size:8px;color:var(--muted)}@media(max-width:680px){.top{display:block}.actions{margin-top:14px}.summary{grid-template-columns:1fr 1fr}.summary .stat:first-child{grid-column:1/-1}.test{grid-template-columns:25px 1fr}.choices{grid-column:2}.note,.status{grid-column:2}.section-head{align-items:flex-start;gap:10px}.section-meta{text-align:right}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<div><div class="eyebrow">GLOW AI™ • STAGING • v48</div><div class="title">QA Dashboard</div><div class="sub">Formal v48 acceptance checklist for GLOW AI STAGING. Mark each test as Pass, Fail or Not Tested. Add free-text notes against any test and use Session Notes for overall observations, defects, test conditions and comments. Results and notes are saved in this browser.</div></div>
+<div class="actions"><button class="btn" id="openApp">OPEN GLOW AI</button><button class="btn" id="exportQA">EXPORT QA</button><button class="btn" id="reset">RESET QA</button></div>
+</header>
+<div class="summary">
+<div class="stat dark"><div class="stat-label">Completion</div><div class="stat-value" id="completion">0%</div><div class="progress" style="background:#403c37"><i id="bar"></i></div></div>
+<div class="stat"><div class="stat-label">Passed</div><div class="stat-value" id="passed">0</div></div>
+<div class="stat"><div class="stat-label">Failed</div><div class="stat-value" id="failed">0</div></div>
+<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" id="remaining">0</div></div>
+</div>
+<section class="notes-panel"><div class="eyebrow">QA NOTES</div><h2>Session Notes</h2><p>Use this for overall observations, defects, test conditions, browser/device details, or anything you want to remember while testing. Saved automatically in this browser.</p><textarea id="sessionNotes" class="notes-area" placeholder="Enter your QA comments here..."></textarea><div id="notesSaved" class="notes-saved"></div></section>
+<main id="sections"></main>
+<section class="final"><div class="eyebrow">P1.1 FINAL GOLDEN PATH</div><h2>End-to-end release test</h2><p>Run this only after the individual acceptance checks are complete.</p><div class="golden">New customer → Glow Check → Free Result → Download Free PDF → Verify Free Email → Checkout → Stripe payment → return → paid Journey → Continue My Glow → Glow Profile → Scan front image → scan back/ingredients image → Add to Shelf → add up to 20 products → Alternatives → set £50 budget → save Wishlist → Wishlist search → save catalogue product → build AM routine → build PM routine → Save → Close → Reopen → Refresh → reconnect by GJ ID → verify Shelf/Wishlist/Budget/Routine → switch through six languages → cross-Journey isolation check → confirm zero unexpected console/API errors.</div></section>
+<div class="footer">GLOW AI QA Dashboard • Browser-local QA results • Staging only</div>
+</div>
+<script>
+const sections=[
+["P0 — Landing & Entry",[
+["Landing page loads correctly","Hero, typography and visual CTA render without errors."],
+["Landing visual consistency","Background, typography, spacing, buttons and cards match the GLOW design system."],
+["Language selector works","EN / FR / ES / PT / DE / IT are available."],
+["Landing language changes","Visible landing copy changes correctly for each selected language."],
+["Find My Glow CTA works","Starts the Glow Check flow."],
+["Continue My Glow CTA works","Opens the Journey continuation panel."],
+["Valid GJ ID is accepted","A valid Journey ID reconnects the correct Journey."],
+["Invalid GJ ID is handled","Useful validation/error state; no broken screen."]
+]],
+["P0 — Glow Check & Free Result",[
+["Photo capture/upload works","Camera and gallery/upload paths work."],
+["Photo validation works","Invalid/unusable photos receive clear guidance."],
+["Glow Score is generated","Score and band render correctly."],
+["Glow Archetype renders","Archetype name and explanation render."],
+["All 6 Glow Dimensions render","Radiance, Hydration, Evenness, Texture, Under-Eye and Vitality are all visible."],
+["Dimension cards are clickable","Each dimension opens its information modal."],
+["Dimension modals translate","Modal content follows the selected language."],
+["Three Glow Priorities render","Personalised priorities are displayed."],
+["Refresh preserves result state","Refresh does not unexpectedly restart the Journey."]
+]],
+["P0 — Free Report & Email",[
+["Free Report generates","Report generation completes successfully."],
+["Free PDF URL is returned","A valid PDF URL is produced."],
+["Free PDF contains actual results","Score, profile and report content match the customer."],
+["Free email arrives","Free Report email is delivered."],
+["Free email sender is correct","Email uses the authorised GLOW AI sender."],
+["Free email CTA is present","CTA clearly points to the next Personal Glow Plan step."],
+["Free email CTA works","CTA opens the correct continuation journey."],
+["No false success on failure","Generation/storage failure does not produce a false success message."]
+]],
+["P0 — Personal Glow Plan & Stripe",[
+["Personal Glow Plan loads","Plan, benefits and $9.99 price are correct."],
+["No redundant continuation card","Personal Glow Plan does not show an irrelevant reconnect card."],
+["Email validation works","Invalid/missing checkout email is blocked."],
+["Legal consent works","Required consent is enforced."],
+["Stripe checkout opens","Correct checkout session opens."],
+["Stripe payment completes","Successful test payment completes."],
+["Stripe metadata is correct","Journey/session identifiers are attached to checkout."],
+["Fresh payment creates correct Journey","Journey exists before checkout and is associated with payment."],
+["Post-Stripe returns to same Journey","Customer returns to the exact Journey used for payment."],
+["Journey becomes paid","Paid status is reflected after successful payment."],
+["Payment recovery works","Recovery uses session/Journey information rather than dead-ending."],
+["Paid confirmation loads","Plan-ready confirmation displays correctly."],
+["Continue My Glow from confirmation works","CTA reaches the paid Product Intelligence experience."]
+]],
+["P0 — GLOW Intelligence Entry & Navigation",[
+["GLOW Intelligence opens for paid Journey","Paid Journey loads the correct profile."],
+["Customer-facing name is GLOW Intelligence","Customer-facing areas no longer call the product AI 1.5."],
+["Visual consistency","GLOW Intelligence looks like the same GLOW product."],
+["Original pill Back button is present","Back button uses the established GLOW pill design."],
+["Back button works","Returns to the correct previous screen."],
+["Back works through nested screens","Scan/Shelf/Routine/Wishlist can return to GLOW Intelligence."],
+["Close works","Closing GLOW Intelligence returns to the underlying Journey correctly."],
+["Refresh preserves state","Refresh does not restart the Journey."],
+["Connected paid Journey hides reconnect card","No redundant GJ reconnect prompt appears when already connected."]
+]],
+["P1 — Profile & Six Dimensions",[
+["Glow Score matches Journey","Displayed score matches the customer Journey."],
+["Glow Archetype matches Journey","Displayed archetype is correct."],
+["All six dimensions display","All six dimension cards are present."],
+["Dimension scores display","Each dimension has its score."],
+["Priority cards display","Three personalised priorities are readable."],
+["Archetype/dimension modals work","Modals open, close and remain readable."],
+["Profile language works","Profile content follows selected language."]
+]],
+["P1 — Product Scanner",[
+["Scanner opens","Product scan screen loads."],
+["Instructions explain the scan","Customer understands what to photograph and why."],
+["Front camera works","Camera capture is available."],
+["Front gallery works","Gallery/file upload is available."],
+["Back camera works","Back/ingredients camera capture is available."],
+["Back gallery works","Back/ingredients gallery/file upload is available."],
+["HEIC/HEIF works","Android/Samsung HEIC/HEIF gallery image is handled."],
+["Front-only scan works","Front image can produce a safe result."],
+["Front + back scan works","Both images can be submitted together."],
+["Readable product result works","Product details and Glow Fit display."],
+["Unreadable image is handled safely","Useful retry/error state without invented product facts."],
+["Add to Shelf works","Scanned product can be added."],
+["Scanner Back works","Back returns to the correct previous screen."]
+]],
+["P1 — My Glow Shelf",[
+["Shelf opens","Shelf loads correctly."],
+["Shelf product card is clear","Product name/role/status are understandable."],
+["Shelf product is clickable","Product opens its detail modal."],
+["Product Detail modal works","Summary, role and relevant product information display."],
+["Glow Journey value is explained","Customer understands what the product adds to their Journey."],
+["See Alternatives is a text hyperlink","It is a clickable text link, not the oval CTA."],
+["See Alternatives opens correct view","Link opens the correct alternatives experience."],
+["Product modal language works","Modal follows selected language."],
+["Remove product works","Product can be removed."],
+["Shelf persists","Shelf survives refresh, close and reopen."]
+]],
+["P1 — Product Alternatives",[
+["Alternatives entry point is visible","Customer can find alternatives from the relevant product."],
+["Premium tier works","Premium direction and planning estimate display."],
+["Mid tier works","Mid direction and planning estimate display."],
+["Value tier works","Value direction and planning estimate display."],
+["Alternative reason is clear","Customer understands why an alternative is suggested."],
+["Planning disclaimer is clear","Alternatives are presented as curated/planning guidance, not live retailer inventory."],
+["Search/autocomplete works","Typing produces useful product suggestions where implemented."],
+["Alternative can be saved","Alternative can be added to Wishlist."],
+["Mobile alternatives work","Layout and controls work at mobile width."],
+["Alternative language works","Alternative UI follows selected language."]
+]],
+["P1 — Budget Mode",[
+["Budget Mode is visible","Customer can find the budget selector."],
+["Budget purpose is explained","Customer understands how budget affects recommendations."],
+["£25 works","Selection saves."],
+["£50 works","Selection saves."],
+["£100 works","Selection saves."],
+["£200+ works","Selection saves."],
+["Budget affects recommendations","Recommendation set/value changes appropriately with budget."],
+["Budget persists after refresh","Selected budget remains."],
+["Budget persists after reconnect","Selected budget remains after GJ reconnect."],
+["Currency presentation is understandable","Flag any confusion around £ or future multi-currency expectations."]
+]],
+["P1 — Wishlist",[
+["Wishlist is top-level","Wishlist is directly accessible."],
+["Personalised recommendations appear","Routine gaps can produce recommendations."],
+["Recommendations are budget-aware","Recommendations reflect selected budget."],
+["Recommendation reason is clear","Customer understands why each item is suggested."],
+["Save recommendation works","Recommended item can be saved."],
+["Saved state is clear","Customer can see what has been saved."],
+["Catalogue search works","Catalogue returns useful results."],
+["Catalogue is distinguished from Alternatives","Customer understands catalogue vs formulation/planning alternatives."],
+["Catalogue product details are useful","Name/category/price/fit or available metadata are visible."],
+["Wishlist item is clickable","Saved item opens useful details."],
+["Remove works","Wishlist item can be removed."],
+["Wishlist persists","Wishlist survives refresh, close/reopen and reconnect."],
+["Wishlist language works","Content follows selected language."]
+]],
+["P1 — Routine",[
+["Routine Builder opens","Routine is reachable."],
+["AM routine displays","AM section works."],
+["PM routine displays","PM section works."],
+["You Already Own is clear","Existing Shelf products are clearly identified."],
+["Consider Adding is clear","Missing/gap products are clearly separated."],
+["USE WHAT YOU OWN FIRST is visible","Guidance prioritises owned products."],
+["Your Gaps is clear","Missing routine roles are identified."],
+["Gap text has sufficient contrast","Gap items are readable/black as intended."],
+["Gap education is present","Your Gaps explains why missing steps matter."],
+["Routine products can be added","Shelf products can be placed into AM/PM."],
+["Routine products can be reordered","Ordering controls work."],
+["Routine products can be removed","Remove works."],
+["Save routine works","Routine saves successfully."],
+["Routine persists","Survives refresh, close/reopen and GJ reconnect."],
+["Routine is Journey-scoped","Another Journey cannot expose the wrong routine."],
+["Routine language works","No unexpected English remains."]
+]],
+["P1 — Language / Internationalisation",[
+["English complete","No unexpected untranslated UI."],
+["French complete","No unexpected untranslated UI."],
+["Spanish complete","No unexpected untranslated UI."],
+["Portuguese complete","No unexpected untranslated UI."],
+["German complete","No unexpected untranslated UI."],
+["Italian complete","No unexpected untranslated UI."],
+["Language selector styling is consistent","Selector looks consistent across screens."],
+["Cards translate","Card headings/body/CTAs translate."],
+["Modals translate","Modal headings/body/CTAs translate."],
+["Back button translates","Back label follows selected language."],
+["No mixed-language screens","No stray English strings in translated screens."],
+["Language persists","Refresh/reconnect preserves selected language where expected."]
+]],
+["P1 — Navigation / Back Regression",[
+["Back from Profile works","Returns correctly."],
+["Back from Scan works","Returns correctly."],
+["Back from Shelf works","Returns correctly."],
+["Back from Routine works","Returns correctly."],
+["Back from Wishlist works","Returns correctly."],
+["Back from Alternatives works","Returns correctly."],
+["Back from Product Detail closes correctly","Modal closes without losing screen state."],
+["Back does not trap the user","No broken loops or dead ends."],
+["Back works on mobile","Pill remains visible and tappable at 390px."],
+["Back works in all languages","Label and function remain correct."]
+]],
+["P1 — Refresh / Session / Journey Continuity",[
+["Refresh landing is stable","No unexpected restart."],
+["Refresh Glow Result is stable","Current state remains available."],
+["Refresh Personal Glow Plan is stable","No unnecessary restart."],
+["Refresh paid Journey is stable","Paid Journey remains accessible."],
+["Refresh GLOW Intelligence is stable","Connected state remains."],
+["Refresh Shelf is stable","Shelf remains."],
+["Refresh Routine is stable","Routine remains."],
+["Refresh Wishlist is stable","Wishlist remains."],
+["Close/reopen preserves state","Where expected, Journey state is recoverable."],
+["Reconnect by GJ ID works","Correct Journey is restored."],
+["New Glow Check does not inherit stale Journey","New customer flow is isolated from previous Journey."],
+["Payment return preserves exact Journey","Stripe return does not route to a different/stale GJ."]
+]],
+["P1 — Paid Report & Email",[
+["Paid report generates","Paid report completes."],
+["Paid PDF opens","Correct PDF is produced."],
+["Paid PDF matches Journey","Content matches customer results."],
+["Paid email arrives","Email is delivered."],
+["Paid email sender is correct","Uses authorised GLOW AI sender."],
+["Paid email contains correct PDF/link","Customer can access their report."],
+["Paid email CTA works","CTA returns customer to the correct Journey."]
+]],
+["P1 — Day 30 / Journey Continuation",[
+["Day 30 information is clear","Customer understands the re-check journey."],
+["Day 30 CTA works","Correct re-check action is available."],
+["Journey ID recovery works","Correct Journey can be recovered."],
+["Re-check photo flow works","New photo can be captured/submitted."],
+["Same-light guidance is clear","Customer is told to use comparable light/angle."],
+["Day 30 result works","Comparison/result displays correctly."],
+["Day 30 Back works","Navigation returns correctly."],
+["Day 30 language works","Content follows selected language."]
+]],
+["P1 — Mobile UX",[
+["390px landing works","No clipping/overflow."],
+["390px Glow Result works","No clipping/overflow."],
+["390px Plan works","No clipping/overflow."],
+["390px GLOW Intelligence works","No clipping/overflow."],
+["390px Scanner works","Controls are usable."],
+["390px Product Modal works","Modal is fully usable."],
+["390px Shelf works","Cards and links are readable."],
+["390px Routine works","AM/PM cards are readable."],
+["390px Wishlist works","Search/cards/CTAs are usable."],
+["390px Back button works","No overlap with header/language selector."],
+["Long translations do not break layout","German/French/etc. remain usable."],
+["CTAs remain tappable","No clipped or inaccessible buttons."]
+]],
+["P1 — Desktop UX & Visual Consistency",[
+["Desktop layout works","No broken layout at desktop width."],
+["No horizontal scrolling","Content remains contained."],
+["Background is consistent","GLOW paper/alabaster treatment is consistent."],
+["Typography is consistent","Font family, sizes and weights are coherent."],
+["Gold accents are consistent","Gold is used consistently."],
+["Primary CTAs are consistent","Black pill CTA treatment is consistent."],
+["Secondary controls are consistent","Secondary pill/link treatment is consistent."],
+["Cards are consistent","Borders, radius and spacing are coherent."],
+["Modals are consistent","Modal treatment matches GLOW design."],
+["GLOW Intelligence feels native","Does not look like a separate product."]
+]],
+["P0 — Golden Path / End-to-End",[
+["New customer → Glow Check","Complete a fresh Glow Check."],
+["Free Result → Free PDF","Generate and access Free Report."],
+["Free Email received","Verify email delivery."],
+["Free Email CTA → Personal Glow Plan","CTA reaches correct plan/continuation flow."],
+["Checkout → Stripe","Payment opens and completes."],
+["Stripe → exact same GJ","Return to the same Journey ID."],
+["Paid → GLOW Intelligence","Paid Product Intelligence opens."],
+["Profile → Scanner","Scan product."],
+["Scanner → Shelf","Add product to Shelf."],
+["Shelf → Alternatives","Open alternatives."],
+["Budget → Wishlist","Set budget and save recommendation."],
+["Wishlist → Routine","Use recommendation/routine gap flow."],
+["Routine → Save","Build and save AM/PM."],
+["Close → Reopen","State remains."],
+["Refresh → Reconnect","State remains and GJ reconnect works."],
+["Six languages","Switch through EN/FR/ES/PT/DE/IT."],
+["Zero unexpected console/API errors","Golden path completes cleanly."]
+]],
+["P1 — Security / Journey Isolation",[
+["Valid Journey required","Invalid/missing Journey IDs are rejected."],
+["Paid status required","Unpaid Journeys cannot access paid P1 data."],
+["Shelf isolation","Journey A cannot read/write Journey B Shelf."],
+["Wishlist isolation","Journey A cannot read/write Journey B Wishlist."],
+["Routine isolation","Journey A cannot read/write Journey B Routine."],
+["Budget isolation","Journey A cannot read/write Journey B Budget."]
+]],
+["P1 — Technical Regression",[
+["No unexpected console errors","Core screens remain clean."],
+["No unexpected 4xx errors","Golden path APIs return expected statuses."],
+["No unexpected 5xx errors","No server errors during core flow."],
+["Language change has no runtime errors","Switching languages remains stable."],
+["Scanner has no runtime errors","Camera/gallery/analysis path remains stable."],
+["Modal has no runtime errors","Dimension/product modals remain stable."],
+["Routine has no runtime errors","Routine flow remains stable."],
+["Wishlist has no runtime errors","Wishlist flow remains stable."],
+["Legacy routine endpoint remains healthy","/api/glow15-routine remains operational."],
+["No QA/demo data contamination","Temporary test data does not appear as customer data."]
+]]
+];
+const key="glowai-qa-v48";
+let state=JSON.parse(localStorage.getItem(key)||"{}");
+const sessionNotesKey="glowai-qa-session-notes-v1";
+const all=[];let n=0;
+function render(){
+ const root=document.getElementById("sections");root.innerHTML="";
+ sections.forEach((s,si)=>{
+  const sec=document.createElement("section");sec.className="section";
+  const done=s[1].filter((_,i)=>state[si+"-"+i]?.status==="pass"||state[si+"-"+i]?.status==="fail").length;
+  sec.innerHTML='<div class="section-head"><h2>'+s[0]+'</h2><div class="section-meta">'+done+' / '+s[1].length+' tested</div></div><div class="tests"></div>';
+  const list=sec.querySelector(".tests");
+  s[1].forEach((t,ti)=>{
+   const id=si+"-"+ti, v=state[id]||{};
+   const row=document.createElement("div");row.className="test"+(v.note?" has-note":"");
+   row.innerHTML='<div class="num">'+(++n)+'</div><div><div class="test-title">'+t[0]+'</div><div class="test-detail">'+t[1]+'</div></div><div class="choices"><button class="choice pass '+(v.status==="pass"?"active":"")+'">PASS</button><button class="choice fail '+(v.status==="fail"?"active":"")+'">FAIL</button><button class="choice skip '+(v.status==="skip"?"active":"")+'">N/T</button></div><div class="status '+(v.status||"")+'">'+(v.status==="pass"?"PASSED":v.status==="fail"?"FAILED":v.status==="skip"?"NOT TESTED":"")+'</div><input class="note" placeholder="Add QA note / defect reference..." value="'+(v.note||"").replace(/"/g,"&quot;")+'">';
+   row.querySelector(".pass").onclick=()=>setStatus(id,"pass");
+   row.querySelector(".fail").onclick=()=>setStatus(id,"fail");
+   row.querySelector(".skip").onclick=()=>setStatus(id,"skip");
+   row.querySelector(".note").oninput=e=>{state[id]={...(state[id]||{}),note:e.target.value};localStorage.setItem(key,JSON.stringify(state))};
+   list.appendChild(row);
+  });root.appendChild(sec);
+ });
+ updateSummary();
+}
+function setStatus(id,status){state[id]={...(state[id]||{}),status};localStorage.setItem(key,JSON.stringify(state));render()}
+function updateSummary(){
+ const total=sections.reduce((a,s)=>a+s[1].length,0), vals=Object.values(state);
+ const tested=vals.filter(x=>["pass","fail"].includes(x.status)).length, pass=vals.filter(x=>x.status==="pass").length, fail=vals.filter(x=>x.status==="fail").length;
+ document.getElementById("completion").textContent=Math.round(tested/total*100)+"%";document.getElementById("passed").textContent=pass;document.getElementById("failed").textContent=fail;document.getElementById("remaining").textContent=total-tested;document.getElementById("bar").style.width=(tested/total*100)+"%";
+}
+document.getElementById("reset").onclick=()=>{if(confirm("Reset all QA results and notes?")){state={};localStorage.removeItem(key);localStorage.removeItem(sessionNotesKey);document.getElementById("sessionNotes").value="";document.getElementById("notesSaved").textContent="";render();window.scrollTo(0,0)}};
+document.getElementById("openApp").onclick=()=>location.href="/";
+document.getElementById("exportQA").onclick=()=>{
+ const lines=["GLOW AI QA REPORT","Generated: "+new Date().toLocaleString(),"","SESSION NOTES",localStorage.getItem(sessionNotesKey)||"(none)",""];
+ sections.forEach((s,si)=>{
+  lines.push(s[0]);
+  s[1].forEach((t,ti)=>{
+   const v=state[si+"-"+ti]||{};
+   lines.push((si+1)+"."+(ti+1)+" "+t[0]+" — "+(v.status||"N/T").toUpperCase());
+   lines.push("Note: "+(v.note||""));
+  });
+  lines.push("");
+ });
+ const blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="glow-ai-qa-report-"+new Date().toISOString().slice(0,10)+".txt";a.click();URL.revokeObjectURL(a.href);
+};
+document.getElementById("sessionNotes").value=localStorage.getItem(sessionNotesKey)||"";
+document.getElementById("sessionNotes").addEventListener("input",e=>{localStorage.setItem(sessionNotesKey,e.target.value);document.getElementById("notesSaved").textContent="Saved automatically";clearTimeout(window.__noteTimer);window.__noteTimer=setTimeout(()=>document.getElementById("notesSaved").textContent="",1200)});
+render();
+</script>
+</body>
+</html>

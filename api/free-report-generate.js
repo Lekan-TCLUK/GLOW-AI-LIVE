@@ -15,7 +15,7 @@ const ALLOWED_APP_HOSTS=new Set([
 ]);
 
 function validEmail(v){return /^\S+@\S+\.\S+$/.test(String(v||"").trim());}
-const SUPPORTED_LOCALES={en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT"};
+const SUPPORTED_LOCALES={en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT",de:"de-DE",it:"it-IT"};
 function normaliseLanguage(value){const v=String(value||"en").trim().toLowerCase();return SUPPORTED_LOCALES[v]?v:"en";}
 function normaliseLocale(language,value){const expected=SUPPORTED_LOCALES[language];const v=String(value||expected).trim();return v===expected?v:expected;}
 function base64url(bytes){let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");}
@@ -24,6 +24,7 @@ async function sha256(value){const bytes=new TextEncoder().encode(value);const h
 function getAppBaseUrl(req){
   const forwardedHost=String(req.headers?.["x-forwarded-host"]||"").split(",")[0].trim().toLowerCase();
   const host=forwardedHost||String(req.headers?.host||"").split(",")[0].trim().toLowerCase();
+  if(!host) return "https://app.glow-ai.co";
   if(!ALLOWED_APP_HOSTS.has(host)) throw new Error("Unrecognised application host");
   return "https://"+host;
 }

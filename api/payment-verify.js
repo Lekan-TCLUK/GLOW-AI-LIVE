@@ -1,5 +1,6 @@
-import { db, email, browser, storage, scheduler } from "hatchable";
+import { db, scheduler, browser, storage } from "hatchable";
 import { markAffiliatePayment } from "lib/affiliate-attribution.js";
+import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
 
 export const access = "public";
 export const methods = ["POST"];
@@ -19,26 +20,7 @@ async function stripeGet(path, key) {
 
 function esc(s) { return String(s || "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 
-async function ensurePdf(journey) {
-  if (journey.pdf_url && journey.plan_version === "PAID-REPORT-V2") return journey.pdf_url;
-  const htmlUrl = "https://app.glow-ai.co/api/report-html?journey_id=" + encodeURIComponent(journey.journey_id);
-  const pdf = await browser.pdf(htmlUrl);
-  const pdfUrl = await storage.put("glow-plans/" + journey.journey_id + ".pdf", pdf, "application/pdf");
-  await db.query("UPDATE glow_journeys SET pdf_url = $1, plan_version='PAID-REPORT-V2' WHERE journey_id = $2", [pdfUrl, journey.journey_id]);
-  return pdfUrl;
-}
-
-async function sendPlanEmail(journey) {
-  const pdf = await ensurePdf(journey);
-  if (journey.email_sent_at) return { sent: true, pdfUrl: pdf };
-  await email.send({
-    to: journey.email,
-    subject: "Your Personal Glow Plan™ is ready ✨",
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#191715"><h1 style="font-family:Georgia,serif">Your Glow Journey has started. ✨</h1><p>Your personalised <b>Personal Glow Plan™</b> is ready.</p><p><b>Glow Journey ID:</b> ${esc(journey.journey_id)}</p><p>Keep this ID safe. You'll use it for your Day-30 Glow Re-Check.</p><p><a href="${pdf}" style="display:inline-block;padding:14px 20px;background:#191715;color:#fff;text-decoration:none;border-radius:8px">OPEN MY GLOW PLAN</a></p><p style="font-size:12px;color:#6d675f">Your plan is a beauty and wellness resource based on visible appearance characteristics. It is not a medical assessment.</p></div>`
-  });
-  await db.query("UPDATE glow_journeys SET email_sent_at = now() WHERE journey_id = $1", [journey.journey_id]);
-  return { sent: true, pdfUrl: pdf };
-}
+// Paid-plan PDF generation and email delivery are handled by lib/customer-email.js.
 
 export default async function(req, res) {
   cors(res);
@@ -50,9 +32,15 @@ export default async function(req, res) {
   try {
     const stripe = await stripeGet("checkout/sessions/" + encodeURIComponent(sessionId), key);
     if (stripe.payment_status !== "paid") return res.status(402).json({ error: "Payment has not been completed yet.", status: stripe.payment_status });
-    const journeyId = stripe.metadata?.journey_id || stripe.client_reference_id;
-    const found = await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId]);
-    if (!found.rows[0]) return res.status(404).json({ error: "Glow Journey could not be found." });
+    const metadataJourneyId = String(stripe.metadata?.journey_id || "").trim().toUpperCase();
+    const metadataSessionId = String(stripe.metadata?.session_id || "").trim();
+    const clientRef = String(stripe.client_reference_id || "").trim();
+    let found = metadataJourneyId ? await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [metadataJourneyId]) : {rows:[]};
+    if (!found.rows[0] && metadataSessionId) found = await db.query("SELECT * FROM glow_journeys WHERE session_id = $1 OR stripe_session_id = $1 LIMIT 1", [metadataSessionId]);
+    if (!found.rows[0] && clientRef && /^GJ-[A-Z0-9]{8,20}$/.test(clientRef.toUpperCase())) found = await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [clientRef.toUpperCase()]);
+    if (!found.rows[0] && stripe.customer_details?.email) found = await db.query("SELECT * FROM glow_journeys WHERE email = $1 AND payment_status <> 'paid' ORDER BY created_at DESC LIMIT 1", [String(stripe.customer_details.email).trim().toLowerCase()]);
+    if (!found.rows[0]) return res.status(409).json({ error: "Your payment was received. We're reconnecting your Glow Journey now.", recovery: true, paymentReceived: true });
+    const journeyId = found.rows[0].journey_id;
     await db.query("UPDATE glow_journeys SET payment_status = 'paid', paid_at = COALESCE(paid_at, now()), journey_started_at = COALESCE(journey_started_at, now()), journey_status = CASE WHEN journey_status = 'PENDING_PAYMENT' THEN 'ACTIVE' ELSE journey_status END WHERE journey_id = $1", [journeyId]);
     const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId])).rows[0];
     try {
@@ -70,9 +58,18 @@ export default async function(req, res) {
     let pdfUrl = updated.pdf_url || null;
     let emailError = null;
     try {
-      const delivery = await sendPlanEmail(updated);
-      emailSent = Boolean(delivery?.sent);
-      pdfUrl = delivery?.pdfUrl || pdfUrl;
+      if (!emailSent && updated.email) {
+        const queued = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PDF");
+        if (queued.deliveryId) {
+          const delivery = await processCustomerEmail(queued.deliveryId);
+          emailSent = Boolean(delivery?.sent);
+        } else {
+          emailSent = Boolean(queued.sent);
+        }
+      }
+      const refreshed = (await db.query("SELECT pdf_url,email_sent_at FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];
+      pdfUrl = refreshed?.pdf_url || pdfUrl;
+      emailSent = emailSent || Boolean(refreshed?.email_sent_at);
     } catch (mailError) {
       emailError = String(mailError?.message || mailError);
       console.error("Plan email failed", mailError);

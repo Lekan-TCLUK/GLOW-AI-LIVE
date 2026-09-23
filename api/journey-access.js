@@ -9,13 +9,11 @@ export default async function(req,res){
   const q=await db.query("SELECT journey_id, email, payment_status, initial_score, initial_analysis_json, day30_completed, day30_score, day30_analysis_json, pdf_url, plan_version, email_sent_at, language, locale FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[id]);
   if(!q.rows[0]) return res.status(404).json({error:"We couldn't find that Glow Journey ID."});
   const j=q.rows[0];
-  if(j.payment_status!=="paid") return res.status(402).json({error:"This Glow Journey has not been completed as a paid plan."});
+  if(j.payment_status!=="paid") return res.status(402).json({error:"This Glow Journey is not yet paid.",checkoutRequired:true,journeyId:j.journey_id,email:j.email||""});
   let pdfUrl=j.pdf_url||null;
   if(pdfUrl && j.plan_version !== "PAID-REPORT-V2") pdfUrl=null;
-  if(pdfUrl){
-    pdfUrl=await storage.urlPermanent("glow-plans/"+j.journey_id+".pdf");
-    await db.query("UPDATE glow_journeys SET pdf_url=$1 WHERE journey_id=$2",[pdfUrl,j.journey_id]);
-  } else {
+  if(pdfUrl){ pdfUrl=await storage.urlPermanent("glow-plans/"+j.journey_id+".pdf"); await db.query("UPDATE glow_journeys SET pdf_url=$1 WHERE journey_id=$2",[pdfUrl,j.journey_id]); }
+  if(!pdfUrl){
     const htmlUrl="https://app.glow-ai.co/api/report-html?journey_id="+encodeURIComponent(j.journey_id);
     const pdf=await browser.pdf(htmlUrl);
     await storage.put("glow-plans/"+j.journey_id+".pdf",pdf,"application/pdf");

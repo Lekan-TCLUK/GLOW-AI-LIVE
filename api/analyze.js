@@ -77,8 +77,8 @@ export default async function (req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const body = req.body || {};
-  const language = ["en","fr","es","pt"].includes(String(body.language||"").toLowerCase()) ? String(body.language).toLowerCase() : "en";
-  const locale = ({en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT"})[language];
+  const language = ["en","fr","es","pt","de","it"].includes(String(body.language||"").toLowerCase()) ? String(body.language).toLowerCase() : "en";
+  const locale = ({en:"en-GB",fr:"fr-FR",es:"es-ES",pt:"pt-PT",de:"de-DE",it:"it-IT"})[language];
   const imageData = body.imageData;
   const freeLegalAccepted = body.freeLegalAccepted === true;
   const sessionId = String(body.sessionId || crypto.randomUUID()).slice(0, 128);
@@ -135,7 +135,7 @@ export default async function (req, res) {
     }
   }
 
-  const languageInstruction = language === "en" ? "Write the visible-only observation notes in English." : language === "fr" ? "Write the visible-only observation notes in French (français)." : language === "es" ? "Write the visible-only observation notes in Spanish (español)." : "Write the visible-only observation notes in European Portuguese (português europeu).";
+  const languageInstruction = language === "en" ? "Write the visible-only observation notes in English." : language === "fr" ? "Write the visible-only observation notes in French (français)." : language === "es" ? "Write the visible-only observation notes in Spanish (español)." : language === "pt" ? "Write the visible-only observation notes in European Portuguese (português europeu)." : language === "de" ? "Write the visible-only observation notes in German (Deutsch)." : "Write the visible-only observation notes in Italian (italiano).";
   const prompt = `${VISION_SYSTEM_PROMPT}\n\n${languageInstruction} Keep the JSON keys and enum values exactly as specified; only customer-facing notes should be localized.\n\nFor this image, first perform the strict quality gate. If the image contains anything other than exactly one visible human face, set quality to REJECT and do not score. Return ONLY valid JSON in this exact shape:\n{"quality":{"status":"PASS|RETRY|REJECT","reason_codes":[],"face_count":1,"subject_type":"HUMAN_FACE","is_screenshot_or_collage":false},"dimensions":{"radiance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"hydration_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"evenness":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"texture":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"under_eye_appearance":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]},"overall_vitality":{"level":"VERY_LOW|LOW|MODERATE|HIGH|VERY_HIGH","notes":[]}},"limitations":[]}\nUse only the allowed levels. Notes must describe visible appearance only. If the image cannot support reliable observation, set quality to RETRY or REJECT and do not guess the dimensions.`;
 
   try {

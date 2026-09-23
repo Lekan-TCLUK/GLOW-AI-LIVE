@@ -30,8 +30,8 @@ export default async function(req,res){
  if(!j)return res.status(404).json({error:"We couldn't find that Glow Journey."});
  if(j.payment_status!=="paid")return res.status(402).json({error:"Please complete your Personal Glow Plan first."});
  if(j.day30_completed)return res.status(409).json({error:"Your included Day-30 Glow Re-Check has already been used."});
- const language=["en","fr","es","pt"].includes(String(j.language||"").toLowerCase())?String(j.language).toLowerCase():"en";
- const languageInstruction=language==="fr"?"Write visible-only observation notes in French.":language==="es"?"Write visible-only observation notes in Spanish.":language==="pt"?"Write visible-only observation notes in European Portuguese.":"Write visible-only observation notes in English.";
+ const language=["en","fr","es","pt","de","it"].includes(String(j.language||"").toLowerCase())?String(j.language).toLowerCase():"en";
+ const languageInstruction=language==="fr"?"Write visible-only observation notes in French.":language==="es"?"Write visible-only observation notes in Spanish.":language==="pt"?"Write visible-only observation notes in European Portuguese.":language==="de"?"Write visible-only observation notes in German.":language==="it"?"Write visible-only observation notes in Italian.":"Write visible-only observation notes in English.";
  let initialId=j.initial_assessment_id; if(!initialId){const iq=await db.query("SELECT id FROM glow_assessments WHERE session_id = $1 AND assessment_type = 'INITIAL' AND assessment_status = 'VALID' ORDER BY created_at ASC LIMIT 1",[j.session_id]);initialId=iq.rows[0]?.id||null;}
  if(!initialId)return res.status(409).json({error:"Your Day-0 assessment could not be located. Please contact support."});
  const iq=await db.query("SELECT id,calibration_version,scoring_version,vision_version,quality_gate_version,safety_version,overall_score FROM glow_assessments WHERE id=$1 AND assessment_type='INITIAL' AND assessment_status='VALID' LIMIT 1",[initialId]); const initial=iq.rows[0];
