@@ -1,4 +1,5 @@
 import { db, scheduler, browser, storage } from "hatchable";
+import { incrementDailyMetric } from "../lib/glow16-intelligence.js";
 import { markAffiliatePayment } from "lib/affiliate-attribution.js";
 import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
 
@@ -42,7 +43,13 @@ export default async function(req, res) {
     if (!found.rows[0]) return res.status(409).json({ error: "Your payment was received. We're reconnecting your Glow Journey now.", recovery: true, paymentReceived: true });
     const journeyId = found.rows[0].journey_id;
     await db.query("UPDATE glow_journeys SET payment_status = 'paid', paid_at = COALESCE(paid_at, now()), journey_started_at = COALESCE(journey_started_at, now()), journey_status = CASE WHEN journey_status = 'PENDING_PAYMENT' THEN 'ACTIVE' ELSE journey_status END WHERE journey_id = $1", [journeyId]);
+    await incrementDailyMetric("journeys_paid");
     const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1", [journeyId])).rows[0];
+    const paymentIntentId = typeof stripe.payment_intent === "object" ? String(stripe.payment_intent?.id || "") : String(stripe.payment_intent || "");
+    await db.query(
+      "INSERT INTO glow_payments (journey_id,provider,provider_session_id,provider_payment_id,amount_cents,currency,status,payment_reference,paid_at,updated_at) VALUES ($1,'STRIPE',$2,$3,$4,$5,'PAID',$6,COALESCE($7,now()),now()) ON CONFLICT (provider,provider_session_id) DO UPDATE SET provider_payment_id=EXCLUDED.provider_payment_id,amount_cents=EXCLUDED.amount_cents,currency=EXCLUDED.currency,status='PAID',payment_reference=EXCLUDED.payment_reference,paid_at=COALESCE(glow_payments.paid_at,EXCLUDED.paid_at),updated_at=now()",
+      [updated.id, stripe.id, paymentIntentId || null, Number(stripe.amount_total || 0), String(stripe.currency || "usd").toLowerCase(), paymentIntentId || stripe.id, stripe.created ? new Date(Number(stripe.created) * 1000).toISOString() : null]
+    );
     try {
       await markAffiliatePayment({journeyInternalId:updated.id,stripeSessionId:stripe.id,stripeCustomerId:stripe.customer||"",paymentStatus:"paid"});
     } catch (affiliateError) {
@@ -65,6 +72,14 @@ export default async function(req, res) {
           emailSent = Boolean(delivery?.sent);
         } else {
           emailSent = Boolean(queued.sent);
+        }
+      }
+      if (updated.email && emailSent) {
+        try {
+          const onboarding = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PAID_ONBOARDING");
+          if (onboarding.queued && onboarding.deliveryId) await processCustomerEmail(onboarding.deliveryId);
+        } catch (onboardingError) {
+          console.error("Paid onboarding email failed", onboardingError);
         }
       }
       const refreshed = (await db.query("SELECT pdf_url,email_sent_at FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];

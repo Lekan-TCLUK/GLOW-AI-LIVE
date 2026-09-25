@@ -1,4 +1,5 @@
 import { db } from "hatchable";
+import { recommendationContext, saveProfile, recordRecommendationEvent } from "../lib/glow16-intelligence.js";
 
 export const access="public";
 export const methods=["GET","POST","DELETE","OPTIONS"];
@@ -144,7 +145,7 @@ function recommendationPriority(role,priorities){
   const found=priorities.findIndex(p=>keys.includes(p.dimension));
   return found<0?99:found;
 }
-function buildRecommendations(products,profile,routineData,budget,saved){
+function buildRecommendations(products,profile,routineData,budget,saved,context=null){
   const priorities=priorityData(profile);
   const gaps=Array.isArray(routineData?.gaps)?routineData.gaps:[];
   const catalogue=recommendationCatalogue();
@@ -157,7 +158,7 @@ function buildRecommendations(products,profile,routineData,budget,saved){
     if(catalogue[role]&&Number.isFinite(score)&&score<=75)candidates.push({role,basis:"LOW_FIT",source:p,sourceScore:score});
   });
   const unique=[];for(const c of candidates){if(!unique.some(x=>x.role===c.role))unique.push(c)}
-  const ordered=unique.sort((a,b)=>recommendationPriority(a.role,priorities)-recommendationPriority(b.role,priorities));
+  const ordered=unique.sort((a,b)=>{const pa=recommendationPriority(a.role,priorities),pb=recommendationPriority(b.role,priorities);const ca=context?.scoreRole?.(a.role)||0,cb=context?.scoreRole?.(b.role)||0;return (pb-pa)||(cb-ca);});
   const limit=Math.min(3,ordered.length);
   let remaining=Number(budget||50);
   const out=[];
@@ -171,7 +172,7 @@ function buildRecommendations(products,profile,routineData,budget,saved){
     const primary=priorities[0]?.label;
     const priorityText=primary?"Supports your "+primary.toLowerCase()+" priority.":"Fits the needs identified by your Glow routine.";
     let reason,detail;
-    if(item.basis==="LOW_FIT"){
+    if(context?.reason) reason=context.reason(item.role,item.basis,item.source); else if(item.basis==="LOW_FIT"){
       reason="You already own "+item.source.product_name+", but its Glow Fit Score is "+item.sourceScore+"/100.";
       detail="Because the score is 75 or below, GLOW is showing an alternative worth considering. "+(primary?"This can also support your "+primary.toLowerCase()+" priority.":"It is intended to improve the fit of this routine role.");
     }else{
@@ -217,11 +218,13 @@ export default async function(req,res){
     const list=await wishlist(journeyId);
     const saved=await routine(journeyId);
     const routineJson=saved.routine_json||{am:[],pm:[]};
+    const customerProfile=await saveProfile(journeyId);
+    const customerContext=recommendationContext(customerProfile);
     const recommendationSource=buildRoutine(products,access.row.initial_analysis_json||{},budget);
-    const recommendationData=buildRecommendations(products,access.row.initial_analysis_json||{},recommendationSource,budget,list);
+    const recommendationData=buildRecommendations(products,access.row.initial_analysis_json||{},recommendationSource,budget,list,customerContext);
     const productId=text(req.query?.product_id,80);
     const source=productId?products.find(p=>p.id===productId):null;
-    const alternativeData=source?alternativesFor(source):null; return res.json({journeyId,budget,wishlist:list,routine:routineJson,routineBudget:Number(saved.monthly_budget_gbp||budget),products,alternatives:alternativeData?.alternatives||[],alternativeEligibility:alternativeData||null,sourceProduct:source||null,recommendations:recommendationData,version:"GLOW-1.7-INTELLIGENCE-V1.0"});
+    const alternativeData=source?alternativesFor(source):null; return res.json({journeyId,budget,wishlist:list,routine:routineJson,routineBudget:Number(saved.monthly_budget_gbp||budget),products,alternatives:alternativeData?.alternatives||[],alternativeEligibility:alternativeData||null,sourceProduct:source||null,recommendations:recommendationData,customerIntelligence:customerProfile?.insights||null,customerIntelligenceVersion:customerProfile?.version||null,recommendationContextVersion:customerContext.version,version:"GLOW-1.7-INTELLIGENCE-V1.0"});
   }
 
   const b=req.body||{};
@@ -231,6 +234,12 @@ export default async function(req,res){
     if(!BUDGETS.includes(budget)) return res.status(400).json({error:"Choose a budget of £25, £50, £100 or £200+."});
     await db.query("INSERT INTO glow15_preferences (journey_id,monthly_budget_gbp) VALUES ($1,$2) ON CONFLICT (journey_id) DO UPDATE SET monthly_budget_gbp=$2,updated_at=now()",[journeyId,budget]);
     return res.json({ok:true,budget});
+  }
+  if(action==="recommendation_event"){
+    const eventType=text(b.eventType,20).toUpperCase(), recommendationId=text(b.recommendationId,120), productId=text(b.productId,80)||null;
+    if(!recommendationId)return res.status(400).json({error:"Recommendation ID is required."});
+    try{await recordRecommendationEvent({journeyId,recommendationId,productId,eventType,source:"glow15-ui",metadata:b.metadata||{}});return res.json({ok:true});}
+    catch(e){return res.status(400).json({error:"Invalid recommendation event."});}
   }
   if(action==="wishlist_add"){
     const title=text(b.title,160), tier=text(b.tier,20).toUpperCase(), category=text(b.category,40)||"other";

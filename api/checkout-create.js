@@ -27,7 +27,7 @@ function safeReturnUrl(value) {
     const u = new URL(String(value || ""));
     if (u.protocol !== "https:") return fallback;
     const host = u.hostname.toLowerCase();
-    const allowed = new Set(["app.glow-ai.co"]);
+    const allowed = new Set(["glow-ai.co","www.glow-ai.co","re9vzi.hatchable.site","glow-ai-v01.hatchable.site"]);
     if (!allowed.has(host)) return fallback;
     return "https://" + host + (u.pathname || "/");
   } catch {}
@@ -101,6 +101,8 @@ export default async function(req, res) {
       [String(email).trim().toLowerCase(), String(termsVersion || "2026-09-17").slice(0, 40), String(privacyVersion || "2026-09-17").slice(0, 40), existing.rows[0].id, referral, language, locale, termsLanguage, privacyLanguage]
     );
   }
+
+  await db.query("UPDATE client_survey_responses SET journey_id=$1 WHERE session_id=$2 AND journey_id IS NULL", [journeyId, String(sessionId)]);
 
   const successBase = safeReturnUrl(returnUrl);
   const journeyRecord = (await db.query("SELECT id,email FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];

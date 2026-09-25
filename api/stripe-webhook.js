@@ -54,6 +54,11 @@ async function activateJourney(session) {
   );
 
   const updated = (await db.query("SELECT * FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];
+  const paymentIntentId = typeof session.payment_intent === "object" ? String(session.payment_intent?.id || "") : String(session.payment_intent || "");
+  await db.query(
+    "INSERT INTO glow_payments (journey_id,provider,provider_session_id,provider_payment_id,amount_cents,currency,status,payment_reference,paid_at,updated_at) VALUES ($1,'STRIPE',$2,$3,$4,$5,'PAID',$6,COALESCE($7,now()),now()) ON CONFLICT (provider,provider_session_id) DO UPDATE SET provider_payment_id=EXCLUDED.provider_payment_id,amount_cents=EXCLUDED.amount_cents,currency=EXCLUDED.currency,status='PAID',payment_reference=EXCLUDED.payment_reference,paid_at=COALESCE(glow_payments.paid_at,EXCLUDED.paid_at),updated_at=now()",
+    [updated.id, session.id, paymentIntentId || null, Number(session.amount_total || 0), String(session.currency || "usd").toLowerCase(), paymentIntentId || session.id, session.created ? new Date(Number(session.created) * 1000).toISOString() : null]
+  );
 
   try {
     await markAffiliatePayment({journeyInternalId:updated.id,stripeSessionId:session.id,stripeCustomerId:session.customer||"",paymentStatus:"paid"});
@@ -79,6 +84,8 @@ async function activateJourney(session) {
     try {
       const queued = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PDF");
       if (queued.queued && queued.deliveryId) await processCustomerEmail(queued.deliveryId);
+      const onboarding = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PAID_ONBOARDING");
+      if (onboarding.queued && onboarding.deliveryId) await processCustomerEmail(onboarding.deliveryId);
     } catch (mailError) {
       console.error("Plan email queue/send failed", mailError);
     }
@@ -102,6 +109,7 @@ export default async function(req, res) {
     }
 
     const event = JSON.parse(new TextDecoder().decode(bytes));
+    console.log("Stripe webhook received", { eventId: event.id || null, eventType: event.type || null, livemode: Boolean(event.livemode) });
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data?.object;
       if (session?.payment_status === "paid") await activateJourney(session);

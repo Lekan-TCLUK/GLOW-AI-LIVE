@@ -9,6 +9,7 @@ import { ENGINE_VERSION } from "../lib/engine/scoring.js";
 import { RANKING_ENGINE_VERSION } from "../lib/engine/ranking.js";
 import { ARCHETYPE_ENGINE_VERSION } from "../lib/engine/archetypes.js";
 import { GLOW_FLOW_VERSION } from "../lib/engine/flow.js";
+import { recordDay30Outcome, saveProfile } from "../lib/glow16-intelligence.js";
 import { overallBand } from "../lib/engine/status.js";
 
 export const access="public";
@@ -52,6 +53,8 @@ export default async function(req,res){
   for(const p of engine.top3)await db.query("INSERT INTO glow_assessment_priorities (assessment_id,rank,dimension,score) VALUES ($1,$2,$3,$4)",[day30Id,p.rank,p.dimension,p.score]);
   const updated=await db.query("UPDATE glow_journeys SET initial_assessment_id=COALESCE(initial_assessment_id,$1),day30_assessment_id=$1,day30_completed=true,day30_score=$2,day30_analysis_json=$3,day30_completed_at=now(),journey_status='DAY30_COMPLETED',day30_entitlement_status='CONSUMED' WHERE journey_id=$4 AND day30_completed=false RETURNING journey_id",[initialId,overall,JSON.stringify(analysis),journeyId]);
   if(!updated.rows[0])return res.status(409).json({error:"Your included Day-30 Glow Re-Check has already been used."});
-  return res.json({journeyId,initialScore:Number(initial.overall_score),day30Score:overall,day30Analysis:analysis,day30AssessmentId:day30Id,flow_version:GLOW_FLOW_VERSION,calibration_version:CALIBRATION_VERSION,scoring_version:ENGINE_VERSION,change:overall-Number(initial.overall_score)});
+  const outcome=await recordDay30Outcome(journeyId,initialId,day30Id,Number(initial.overall_score),overall);
+  await saveProfile(journeyId);
+  return res.json({journeyId,initialScore:Number(initial.overall_score),day30Score:overall,day30Analysis:analysis,day30AssessmentId:day30Id,flow_version:GLOW_FLOW_VERSION,calibration_version:CALIBRATION_VERSION,scoring_version:ENGINE_VERSION,change:overall-Number(initial.overall_score),intelligenceOutcome:outcome});
  }catch(e){console.error("Day30 V1 analysis error",e);return res.status(500).json({error:"We couldn't analyse that photo right now. Please try again."});}
 }

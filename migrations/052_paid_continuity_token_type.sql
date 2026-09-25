@@ -1,0 +1,2 @@
+ALTER TABLE glow_access_tokens DROP CONSTRAINT IF EXISTS glow_access_tokens_token_type_check;
+ALTER TABLE glow_access_tokens ADD CONSTRAINT glow_access_tokens_token_type_check CHECK (token_type IN ('JOURNEY_ACCESS','REPORT_ACCESS','RESEND','FREE_CONTINUITY','DAY30_REMINDER','PAID_CONTINUITY'));

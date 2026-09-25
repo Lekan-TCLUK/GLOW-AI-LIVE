@@ -1,4 +1,5 @@
 import { db, browser, storage, email } from "hatchable";
+import { getCustomerProfile } from "lib/glow16-intelligence.js";
 export const access="public";
 export const methods=["POST","OPTIONS"];
 
@@ -20,7 +21,8 @@ export default async function(req,res){
   if(!rq.rows[0])return res.status(409).json({error:"Save your personalised routine before creating your Glow Intelligence Report."});
   const products=(await db.query("SELECT id,product_name,brand,category,format,ingredients,fit_score,safety_level,effectiveness_level,suitability_level,fit_reasons,cautions,best_for,avoid_if,alternative_profile,routine_role,application,scan_confidence,updated_at FROM glow15_products WHERE journey_id=$1 ORDER BY updated_at DESC",[id])).rows;
   const wishlist=(await db.query("SELECT id,title,brand,category,tier,estimated_price_gbp,reason,source_product_id,metadata,created_at FROM glow15_wishlist WHERE journey_id=$1 ORDER BY created_at DESC",[id])).rows;
-  const state={journeyId:id,analysis:j.initial_analysis_json||{},products,wishlist,routine:rq.rows[0].routine_json||{},budget:Number(rq.rows[0].monthly_budget_gbp||50)};
+  const customerIntelligence=await getCustomerProfile(id);
+  const state={journeyId:id,analysis:j.initial_analysis_json||{},products,wishlist,routine:rq.rows[0].routine_json||{},budget:Number(rq.rows[0].monthly_budget_gbp||50),customerIntelligence:customerIntelligence?.insights||null};
   const sig=await signature(state);
   if(j.glow_intelligence_report_signature===sig&&j.glow_intelligence_report_url){
     return res.json({ok:true,generated:false,sent:Boolean(j.glow_intelligence_report_sent_at),reportUrl:j.glow_intelligence_report_url,journeyId:id});

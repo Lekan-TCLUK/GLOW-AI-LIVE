@@ -11,7 +11,8 @@ const ALLOWED_APP_HOSTS=new Set([
   "glow-ai.io",
   "www.glow-ai.io",
   "glow-ai.co",
-  "app.glow-ai.co"
+  "www.glow-ai.co",
+  "re9vzi.hatchable.site"
 ]);
 
 function validEmail(v){return /^\S+@\S+\.\S+$/.test(String(v||"").trim());}
@@ -30,7 +31,7 @@ function getAppBaseUrl(req){
 }
 
 async function getOrCreateFreeSnapshotPdf(baseUrl,journeyId){
-  const key="glow-snapshots/"+encodeURIComponent(journeyId)+".pdf";
+  const key="glow-snapshots/"+encodeURIComponent(journeyId)+"-v16.pdf";
   try{
     const existing=await storage.head(key);
     if(existing?.size){
@@ -90,6 +91,7 @@ export default async function(req,res){
    if(!assessment)return res.status(409).json({error:"Your Glow assessment could not be linked. Please run your Glow Check again."});
    const journeyId="GJ-"+crypto.randomUUID().replaceAll("-","").slice(0,8).toUpperCase();
    journey=(await db.query("INSERT INTO glow_journeys (journey_id,session_id,email,initial_assessment_id,initial_analysis_json,initial_score,rewardful_referral,language,locale,terms_language,privacy_language,terms_accepted_at,privacy_acknowledged_at,terms_version,privacy_version) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now(),now(),$12,$13) RETURNING *",[journeyId,sessionId,sendEmail?recipient:null,assessment.id,JSON.stringify(analysis.analysis_json),Number(analysis.overall_score),referral||null,language,locale,termsLanguage,privacyLanguage,termsVersion,privacyVersion])).rows[0];
+   await db.query("UPDATE client_survey_responses SET journey_id=$1 WHERE session_id=$2 AND journey_id IS NULL",[journeyId,sessionId]);
   }
 
   const pdfUrl=await getOrCreateFreeSnapshotPdf(baseUrl,journey.journey_id);
