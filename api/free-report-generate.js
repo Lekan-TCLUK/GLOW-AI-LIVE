@@ -12,6 +12,7 @@ const ALLOWED_APP_HOSTS=new Set([
   "www.glow-ai.io",
   "glow-ai.co",
   "www.glow-ai.co",
+  "app.glow-ai.co",
   "re9vzi.hatchable.site"
 ]);
 
