@@ -26,7 +26,7 @@ async function sha256(value){const bytes=new TextEncoder().encode(value);const h
 function getAppBaseUrl(req){
   const forwardedHost=String(req.headers?.["x-forwarded-host"]||"").split(",")[0].trim().toLowerCase();
   const host=forwardedHost||String(req.headers?.host||"").split(",")[0].trim().toLowerCase();
-  if(!host) return "https://app.glow-ai.co";
+  if(!host) return "https://re9vzi.hatchable.site";
   if(!ALLOWED_APP_HOSTS.has(host)) throw new Error("Unrecognised application host");
   return "https://"+host;
 }

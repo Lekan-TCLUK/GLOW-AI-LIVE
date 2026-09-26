@@ -22,7 +22,7 @@ function formEncode(obj) {
 }
 
 function safeReturnUrl(value) {
-  const fallback = "https://app.glow-ai.co/";
+  const fallback = "https://www.glow-ai.co/";
   try {
     const u = new URL(String(value || ""));
     if (u.protocol !== "https:") return fallback;

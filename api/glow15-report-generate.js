@@ -27,7 +27,7 @@ export default async function(req,res){
   if(j.glow_intelligence_report_signature===sig&&j.glow_intelligence_report_url){
     return res.json({ok:true,generated:false,sent:Boolean(j.glow_intelligence_report_sent_at),reportUrl:j.glow_intelligence_report_url,journeyId:id});
   }
-  const htmlUrl="https://app.glow-ai.co/api/glow15-report-html?journey_id="+encodeURIComponent(id);
+  const htmlUrl="https://re9vzi.hatchable.site/api/glow15-report-html?journey_id="+encodeURIComponent(id);
   const pdf=await browser.pdf(htmlUrl);
   const key="glow-intelligence/"+encodeURIComponent(id)+"/report-"+sig+".pdf";
   await storage.put(key,pdf,"application/pdf");

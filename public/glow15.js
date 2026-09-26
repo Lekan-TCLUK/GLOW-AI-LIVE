@@ -115,9 +115,15 @@ function showG15InfoModal(title,eyebrow,sections){
  $("g15body").querySelectorAll("[data-info-close]").forEach(b=>b.onclick=()=>$("g15InfoModal")?.remove());
 }
 function openG15DimensionInfo(key){
- const info=window.GlowI18n?.dimensionInfo?.[LANG()]?.[key]||window.GlowI18n?.dimensionInfo?.en?.[key]||{};
+ const info=window.GlowI18n?.dict?.dimensionInfo?.[LANG()]?.[key]||window.GlowI18n?.dict?.dimensionInfo?.en?.[key]||{};
  const title=window.GlowI18n?.dimLabel?.(key)||key;
- showG15InfoModal(title,e1("dimensionEyebrow"),[{label:e1("whatMeans"),text:info.meaning||""},{label:e1("whatAssess"),text:info.assess||""},{label:e1("simpleTerms"),text:info.simple||""}]);
+ const cats=journeyProfile?.initialAnalysis?.categories||{};
+ const categoryKeys=key==="under_eye"?["under_eye","under_eye_appearance"]:key==="vitality"?["vitality","overall_vitality"]:[key];
+ const category=categoryKeys.map(k=>cats[k]).find(v=>v);
+ const observations=Array.isArray(category?.observations)?category.observations.map(x=>String(x||"").trim()).filter(x=>x.length>=12).slice(0,2):[];
+ const observedLabel=e1("observed")||"WHAT WE OBSERVED";
+ const observedText=observations.length?observations.map(x=>"• "+x).join("\n\n"):"";
+ showG15InfoModal(title,e1("dimensionEyebrow"),[{label:e1("whatMeans"),text:info.meaning||""},{label:e1("whatAssess"),text:info.assess||""},{label:observedLabel,text:observedText||"No sufficient visible observation is available."},{label:e1("simpleTerms"),text:info.simple||""}]);
 }
 function openG15PriorityInfo(key){
  const cc=window.GlowI18n?.contentFor?.()||{},label=window.GlowI18n?.dimLabel?.(key)||key;
@@ -392,7 +398,21 @@ function updateGaps(){
 }
 function routineCards(items){var x=c();return (items||[]).length?(items||[]).map(function(it){return "<div class=\"g15-routine-card\"><span>"+String(it.step).padStart(2,"0")+"</span><div><b>"+esc(it.name)+"</b><strong>"+esc(it.product?.product_name||"")+"</strong><small>"+esc(it.product?.application||"")+"</small></div></div>"}).join(""):"<div class=\"g15-empty mini\"><p>"+x.empty+"</p></div>"}
 function openView(v,fromBack){ensure();if(v!==view&&!fromBack&&viewHistory[viewHistory.length-1]!==view)viewHistory.push(view);view=v;try{localStorage.setItem("glow15_view",v);}catch(_){}persistPI();images=[];if(v==="home")home();else if(v==="scan")scan();else if(v==="shelf")shelf();else if(v==="routine")routine();else if(v==="wishlist")wishlist()}
-async function ensureHeic2Any(){if(window.heic2any)return window.heic2any;if(window.__glowHeicLoader)return window.__glowHeicLoader;window.__glowHeicLoader=new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="/vendor/heic2any.min.js";s.async=true;s.onload=()=>window.heic2any?resolve(window.heic2any):reject(new Error("HEIC conversion is unavailable."));s.onerror=()=>reject(new Error("HEIC conversion is unavailable right now. Please choose JPG or PNG."));document.head.appendChild(s)});return window.__glowHeicLoader}
+async function ensureHeic2Any(){
+ if(window.heic2any)return window.heic2any;
+ if(window.__glowHeicLoader)return window.__glowHeicLoader;
+ const loadScript=src=>new Promise((resolve,reject)=>{
+   const s=document.createElement("script");
+   s.src=src;s.async=true;
+   s.onload=()=>window.heic2any?resolve(window.heic2any):reject(new Error("HEIC converter loaded without exposing its converter."));
+   s.onerror=()=>reject(new Error("HEIC converter failed to load."));
+   document.head.appendChild(s);
+ });
+ window.__glowHeicLoader=loadScript("/vendor/heic2any.min.js?v=2")
+   .catch(()=>loadScript("https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"))
+   .catch(()=>{window.__glowHeicLoader=null;throw new Error("HEIC conversion is unavailable right now. Please choose JPG or PNG.");});
+ return window.__glowHeicLoader;
+}
 async function fileData(f){if(!f||!String(f.type||"").startsWith("image/"))throw new Error("Please choose an image file.");const n=String(f.name||"").toLowerCase(),t=String(f.type||"").toLowerCase(),isHeic=t.includes("heic")||t.includes("heif")||n.endsWith(".heic")||n.endsWith(".heif");if(f.size>12*1024*1024)throw new Error("That photo is too large. Choose an image under 12 MB.");if(isHeic){try{const convert=await ensureHeic2Any();const converted=await convert({blob:f,toType:"image/jpeg",quality:.82});const blob=Array.isArray(converted)?converted[0]:converted;const reader=new FileReader();return await new Promise((resolve,reject)=>{reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("We couldn't prepare that HEIC photo. Please try another image."));reader.readAsDataURL(blob)})}catch(e){throw new Error(e?.message||"We couldn't convert that HEIC photo. Please choose JPG or PNG.")}}const reader=new FileReader();return await new Promise((resolve,reject)=>{reader.onload=()=>{const data=String(reader.result||"");if(!data.startsWith("data:image/")||!data.includes(";base64,")){reject(new Error("Please choose a JPG, PNG or WebP product photo."));return}resolve(data)};reader.onerror=()=>reject(new Error("We couldn't read that image. Please choose another photo."));reader.readAsDataURL(f)})}
 document.addEventListener("glow-language-changed",()=>{if(overlay&&!overlay.hidden)openView(view)});document.addEventListener("DOMContentLoaded",()=>{const params=new URLSearchParams(location.search);if(params.get("glow15")==="1"){const qJourney=params.get("journey_id");qJourney?open(qJourney):openDemo();return}$( "openGlow15")?.addEventListener("click",()=>{const j=localStorage.getItem("glow_journey_id")||"";j?open(j):openDemo();});const saved=(()=>{try{return JSON.parse(localStorage.getItem(PI_STATE_KEY)||"null")}catch(_){return null}})();if(saved?.journeyId&&saved?.open){open(saved.journeyId).then(()=>{if(saved.view&&saved.view!=="home")openView(saved.view);});}});
 window.Glow15={open,openDemo,close};
