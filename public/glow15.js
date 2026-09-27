@@ -16,6 +16,14 @@ const PI_STATE_KEY="glow15_state";
 function persistPI(){try{localStorage.setItem(PI_STATE_KEY,JSON.stringify({journeyId,view,open:!!overlay&&!overlay.hidden}));}catch(_){} }
 function clearPIState(){try{localStorage.removeItem(PI_STATE_KEY);}catch(_){} }
 function c(){return COPY[LANG()]||COPY.en}
+const DAY30COPY={
+ en:{title:"YOUR 30-DAY GLOW",copy:"See what changed across your six Glow dimensions.",cta:"VIEW MY PROGRESS",icon:"↗"},
+ fr:{title:"VOTRE GLOW À 30 JOURS",copy:"Voyez ce qui a changé dans vos six dimensions Glow.",cta:"VOIR MA PROGRESSION",icon:"↗"},
+ es:{title:"TU GLOW A LOS 30 DÍAS",copy:"Descubre qué ha cambiado en tus seis dimensiones Glow.",cta:"VER MI PROGRESO",icon:"↗"},
+ pt:{title:"O SEU GLOW AOS 30 DIAS",copy:"Veja o que mudou nas suas seis dimensões Glow.",cta:"VER O MEU PROGRESSO",icon:"↗"},
+ de:{title:"IHR GLOW NACH 30 TAGEN",copy:"Sehen Sie, was sich in Ihren sechs Glow-Dimensionen verändert hat.",cta:"MEINEN FORTSCHRITT ANSEHEN",icon:"↗"},
+ it:{title:"IL TUO GLOW A 30 GIORNI",copy:"Scopri cosa è cambiato nelle tue sei dimensioni Glow.",cta:"VEDI I MIEI PROGRESSI",icon:"↗"}
+};
 const P1COPY={
  en:{alternatives:"GLOW ALTERNATIVES",premium:"PREMIUM",mid:"MID-RANGE",value:"VALUE",difference:"WHAT CHANGES",saveWish:"SAVE TO WISHLIST",wishlist:"MY WISHLIST",emptyWish:"Your wishlist is empty. Save an alternative you want to consider later.",budget:"GLOW BUDGET",budgetLead:"Set a monthly skincare budget. GLOW will prioritise what you already own and highlight only genuine gaps.",builder:"ROUTINE BUILDER",builderLead:"Build your own AM + PM routine from your Glow Shelf.",addAm:"ADD TO AM",addPm:"ADD TO PM",saveRoutine:"SAVE MY ROUTINE",savedRoutine:"ROUTINE SAVED",budgetSaved:"BUDGET",planning:"planning estimate",ownedFirst:"USE WHAT YOU OWN FIRST",ownedFirstCopy:"Your shelf comes first. New products should only fill a genuine routine gap.",gaps:"YOUR GAPS",altNote:"Alternatives are formulation directions for planning - not retailer listings or medical advice."},
  fr:{alternatives:"ALTERNATIVES GLOW",premium:"PREMIUM",mid:"MILIEU DE GAMME",value:"ÉCONOMIQUE",difference:"CE QUI CHANGE",saveWish:"ENREGISTRER",wishlist:"MA LISTE",emptyWish:"Votre liste est vide. Enregistrez une alternative à considérer.",budget:"BUDGET GLOW",budgetLead:"Définissez votre budget mensuel de soins.",builder:"CONSTRUIRE LA ROUTINE",builderLead:"Créez votre routine MATIN + SOIR depuis votre sélection Glow.",addAm:"AJOUTER AU MATIN",addPm:"AJOUTER AU SOIR",saveRoutine:"ENREGISTRER MA ROUTINE",savedRoutine:"ROUTINE ENREGISTRÉE",budgetSaved:"BUDGET",planning:"estimation",ownedFirst:"UTILISEZ D'ABORD CE QUE VOUS AVEZ",ownedFirstCopy:"Votre sélection passe en premier.",gaps:"VOS BESOINS",altNote:"Les alternatives sont des orientations de formulation, pas des produits de détaillants ni des conseils médicaux."},
@@ -134,12 +142,12 @@ function openG15ArchetypeInfo(profile){
  showG15InfoModal(info.label||"YOUR UNIQUE GLOW™",e1("archetypeEyebrow"),[{label:e1("whatItMeans"),text:info.copy||info.badge||""}]);
 }
 function home(){
- const x=c();setHead();tabs("home");persistPI();
+ const x=c(),d30=DAY30COPY[LANG()]||DAY30COPY.en;setHead();tabs("home");persistPI();
  const body="<section class=\"g15-hero\"><div class=\"g15-orb\">GLOW<br><span>1.5</span></div><div><div class=\"g15-kicker\">"+h1("productIntelligence")+"</div><h3>"+x.title+"</h3><p>"+x.lead+"</p></div></section>"+
  "<div class=\"g15-focus\"><div class=\"g15-card-head\"><span>"+x.focus+"</span><b>"+(journeyProfile?.initialScore??(demo?"78":""))+"</b></div><div class=\"g15-focus-row\"><span>✦</span><div><strong>"+(journeyProfile?h1("personalProfile"):demo?"Hydration · Radiance · Texture":h1("sixProfile"))+"</strong><small>"+(journeyProfile?h1("connected"):demo?h1("demoProfile"):h1("enterJourney"))+"</small></div></div></div>"+
  (journeyProfile&&!demo?profileCard(journeyProfile):"")+
  (!journeyProfile&&!demo?"<section class=\"g15-continue\"><div><div class=\"g15-kicker\">"+h1("journeyEyebrow")+"</div><h3>"+h1("continueTitle")+"</h3><p>"+h1("continueCopy")+"</p></div><div class=\"g15-continue-form\"><input id=\"g15JourneyId\" class=\"g15-journey-input\" value=\""+esc(journeyId||"")+" \" placeholder=\"GJ-XXXXXXXX\" maxlength=\"23\" autocomplete=\"off\"><button class=\"g15-primary\" id=\"g15Continue\">"+h1("continueCta")+"</button><small id=\"g15JourneyError\" class=\"g15-journey-error\" role=\"alert\"></small></div></section>":"")+
- "<div class=\"g15-grid\"><button data-g15-action=\"scan\"><b>◌</b><strong>"+x.scan+"</strong><span>"+h1("scanCopy")+"</span></button><button data-g15-action=\"shelf\"><b>◇</b><strong>"+x.shelf+"</strong><span>"+h1("shelfCopy")+"</span></button><button data-g15-action=\"routine\"><b>◐</b><strong>"+x.routine+"</strong><span>"+h1("routineCopy")+"</span></button></div>"+
+ "<div class=\"g15-grid\"><button data-g15-action=\"scan\"><b>◌</b><strong>"+x.scan+"</strong><span>"+h1("scanCopy")+"</span></button><button data-g15-action=\"shelf\"><b>◇</b><strong>"+x.shelf+"</strong><span>"+h1("shelfCopy")+"</span></button><button data-g15-action=\"routine\"><b>◐</b><strong>"+x.routine+"</strong><span>"+h1("routineCopy")+"</span></button>"+(journeyProfile&&!demo?"<button class=\"g15-day30-card\" data-g15-action=\"day30\"><b>"+d30.icon+"</b><strong>"+d30.title+"</strong><span>"+d30.copy+"</span><em>"+d30.cta+" →</em></button>":"")+"</div>"+
  (demo?"<div class=\"g15-demo\">"+h1("demoNote")+"</div>":"");
  $("g15body").innerHTML=body;
  overlay.querySelectorAll("[data-g15-action]").forEach(b=>b.onclick=()=>openView(b.dataset.g15Action));
@@ -397,7 +405,8 @@ function updateGaps(){
  el.innerHTML=gaps.length?"<div class=\"g15-gap-label\">"+e1("consider")+"</div>"+gaps.map(function(g){return "<span class=\"g15-gap-item\">"+esc(g.replace("_"," "))+"</span>"}).join(""):"<span class=\"g15-gap-good\">"+q.ownedFirst+"</span>";
 }
 function routineCards(items){var x=c();return (items||[]).length?(items||[]).map(function(it){return "<div class=\"g15-routine-card\"><span>"+String(it.step).padStart(2,"0")+"</span><div><b>"+esc(it.name)+"</b><strong>"+esc(it.product?.product_name||"")+"</strong><small>"+esc(it.product?.application||"")+"</small></div></div>"}).join(""):"<div class=\"g15-empty mini\"><p>"+x.empty+"</p></div>"}
-function openView(v,fromBack){ensure();if(v!==view&&!fromBack&&viewHistory[viewHistory.length-1]!==view)viewHistory.push(view);view=v;try{localStorage.setItem("glow15_view",v);}catch(_){}persistPI();images=[];if(v==="home")home();else if(v==="scan")scan();else if(v==="shelf")shelf();else if(v==="routine")routine();else if(v==="wishlist")wishlist()}
+function openDay30FromG15(){const id=String(journeyId||localStorage.getItem("glow_journey_id")||"").trim().toUpperCase();if(!/^GJ-[A-Z0-9]{8,20}$/.test(id)){openView("home");return;}try{localStorage.setItem("glow_journey_id",id);sessionStorage.setItem("glow_open_day30","1");}catch(_){}close();window.dispatchEvent(new CustomEvent("glow15-day30",{detail:{journeyId:id}}));}
+function openView(v,fromBack){ensure();if(v!==view&&!fromBack&&viewHistory[viewHistory.length-1]!==view)viewHistory.push(view);view=v;try{localStorage.setItem("glow15_view",v);}catch(_){}persistPI();images=[];if(v==="home")home();else if(v==="scan")scan();else if(v==="shelf")shelf();else if(v==="routine")routine();else if(v==="wishlist")wishlist();else if(v==="day30")openDay30FromG15()}
 async function ensureHeic2Any(){
  if(window.heic2any)return window.heic2any;
  if(window.__glowHeicLoader)return window.__glowHeicLoader;

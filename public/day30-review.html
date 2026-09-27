@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GLOW AI™ — Day 30 Review</title>
+<meta name="theme-color" content="#f8f5ef">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap');
+:root{--ink:#171615;--muted:#81796d;--gold:#b69b61;--cream:#f7f2e9;--line:#e7dfd2;--white:#fff;--down:#876b5e}
+*{box-sizing:border-box}body{margin:0;background:#eeeae3;color:var(--ink);font-family:"DM Sans",Arial,sans-serif}.wrap{width:min(100%,480px);margin:0 auto;background:#fcfbf8;min-height:100vh;box-shadow:0 0 35px rgba(0,0,0,.08)}header{padding:28px 24px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee8df;position:sticky;top:0;background:rgba(252,251,248,.96);backdrop-filter:blur(10px);z-index:3}.brand{font-family:"Playfair Display",serif;font-weight:600;font-size:18px}.tools{display:flex;gap:8px}.pill{border:1px solid var(--line);border-radius:24px;padding:9px 13px;font-size:10px;letter-spacing:.08em;background:#faf8f3}.back{border:1px solid var(--line);border-radius:24px;padding:9px 13px;font-size:10px;letter-spacing:.08em;background:white}.content{padding:16px 24px 40px}.eyebrow{font-size:10px;letter-spacing:.18em;color:var(--gold);margin-top:10px}.h1{font-family:"Playfair Display",serif;font-size:38px;line-height:.98;font-weight:500;margin:20px 0 12px}.h1 em{font-style:italic}.lead{font-size:12px;line-height:1.55;color:#756e64;margin:0 0 20px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px}.card.dark{background:#171717;color:#fff;border-color:#171717}.label,.section-label{font-size:9px;letter-spacing:.17em;color:#9b8a6c}.dark .label{color:#c8b88d}.score{font-family:"Playfair Display",serif;font-size:45px;line-height:1;margin:14px 0 12px}.bar{height:5px;border-radius:4px;background:#ece7dc;overflow:hidden}.bar i{display:block;height:100%;background:var(--gold);border-radius:4px}.dark .bar{background:#444}.summary{margin-top:12px;background:#f5f0e7;border:1px solid #e9dfcf;border-radius:20px;padding:18px}.summary-title{font-family:"Playfair Display",serif;font-size:21px;line-height:1.15;margin-top:9px}.summary-copy{font-size:11px;line-height:1.5;color:#6f685f;margin:8px 0 0}.section{margin-top:22px}.section-lead{font-size:10px;line-height:1.45;color:var(--muted);margin:6px 0 11px}.dims{display:grid;grid-template-columns:1fr 1fr;gap:9px}.dim{background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px}.dim label{display:block;color:var(--gold);font-size:8px;letter-spacing:.12em;line-height:1.3;margin-bottom:7px}.dim-score{font-family:"Playfair Display",serif;font-size:27px}.meta{font-size:9px;margin-top:7px;display:flex;gap:5px;align-items:center}.up{color:#9d824b}.down{color:var(--down)}.flat{color:var(--muted)}.arrow{font-size:13px}.panel{margin-top:12px;background:var(--cream);border:1px solid #e8dcc9;border-radius:19px;padding:17px}.obs-title{font-family:"Playfair Display",serif;font-size:20px;margin:7px 0 8px}.obs{font-size:11px;line-height:1.5;padding:9px 0;border-bottom:1px solid #e5dacc}.obs:last-child{border:0}.routine{font-family:"Playfair Display",serif;font-size:25px;margin:7px 0}.bodycopy{font-size:11px;line-height:1.5;color:var(--muted);margin:0}.next{background:white;border:1px solid var(--line)}.next h3{font-family:"Playfair Display",serif;font-size:21px;font-weight:500;margin:8px 0}.buttons{margin-top:18px}.btn{width:100%;padding:14px;border-radius:28px;border:1px solid var(--line);background:white;font-size:11px;letter-spacing:.08em;margin-top:9px}.btn.primary{background:#171717;color:#fff;border-color:#171717}.note{text-align:center;font-size:9px;line-height:1.5;color:#91887b;margin:17px 0}.review{position:fixed;right:18px;bottom:18px;background:#171717;color:white;padding:12px 14px;border-radius:18px;box-shadow:0 8px 25px #0003;font-size:10px;z-index:4}.review select{margin-left:5px;background:#171717;color:#fff;border:0;font-size:10px} 
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="brand">GLOW AI™</div><div class="tools"><div class="pill">ENGLISH⌄</div><button class="back" id="day30Back" type="button">← BACK</button></div></header>
+<main class="content">
+<div class="eyebrow">YOUR 30-DAY GLOW PROGRESS</div>
+<h1 class="h1">What changed.<br><em>What matters next.</em></h1>
+<p class="lead">Your Day-30 check gives you a second view of the same six visible dimensions — not a verdict on your routine.</p>
+<div class="compare">
+<div class="card"><div class="label">STARTING SCORE • DAY 0</div><div class="score" id="start">65/100</div><div class="bar"><i id="bar1" style="width:65%"></i></div></div>
+<div class="card dark"><div class="label">NEW SCORE • DAY 30</div><div class="score" id="day">63/100</div><div class="bar"><i id="bar2" style="width:63%"></i></div></div>
+</div>
+<div class="summary"><div class="section-label">YOUR 30-DAY READ</div><div class="summary-title" id="change">2 lower visible score</div><p class="summary-copy" id="summary">Your overall visible score is lower. That is a signal to review the journey, not a verdict that your routine failed. 1 dimension moved up, 1 moved down and 4 stayed level.</p></div>
+<section class="panel"><div class="section-label">YOUR GLOW ARCHETYPE</div><div class="obs-title" id="archetypeName">YOUR UNIQUE GLOW™</div><p class="bodycopy" id="archetypeCopy">Your starting Glow profile remains your reference point for the 30-day comparison.</p></section>
+<section class="section"><div class="section-label">WHERE YOUR PROFILE MOVED</div><p class="section-lead">Each dimension is compared with your Day-0 check. Movement is a visual signal, not proof that a particular product or habit caused the change.</p><div class="dims" id="dims"></div></section>
+<section class="panel" id="dimensionDetail" hidden><div class="section-label">30-DAY DIMENSION COMPARISON</div><div class="obs-title" id="detailTitle">—</div><div class="obs" id="detailSummary">—</div><div class="section-label" style="margin-top:12px">DAY 0 OBSERVED</div><div id="detailBefore"></div><div class="section-label" style="margin-top:12px">DAY 30 OBSERVED</div><div id="detailToday"></div></section>
+<section class="panel"><div class="section-label">WHAT GLOW OBSERVED TODAY</div><div class="obs-title" id="obsDim">Hydration Appearance</div><div class="obs">The forehead and cheek areas appear glossy and smooth in several spots.</div><div class="obs">The lips show visible vertical lines and a slightly dry-looking texture.</div></section>
+<section class="panel" id="routinePanel" hidden><div class="section-label">YOUR RECORDED ROUTINE ACTIVITY</div><div class="routine" id="routineValue">—</div><p class="bodycopy">This section is shown only when GLOW has explicit routine completion records. It is never inferred from your score, products or recommendations.</p></section>
+<section class="panel"><div class="section-label">READ THE CHANGE IN CONTEXT</div><p class="bodycopy">A lower score does not automatically mean your routine was unsuccessful. Lighting, angle, expression and image quality can change the visual signal. Review the result calmly and avoid changing everything at once.</p></section>
+<section class="panel next"><div class="section-label">YOUR NEXT 30 DAYS</div><h3>Review before you react.</h3><p class="bodycopy">Do not overhaul your routine from one lower re-check. First repeat the capture under similar conditions and review which dimensions moved most.</p></section>
+<div class="buttons"><button class="btn primary">↗ SHARE MY GLOW SCORE</button><button class="btn">START MY NEXT GLOW JOURNEY</button></div>
+<p class="note">Your Glow Progress compares two visual assessments. Lighting, camera angle, expression, image quality and other conditions can influence scores. A score change is not a medical assessment and does not establish that your routine caused the change.</p>
+</main>
+</div>
+<div class="review">Review state:
+<select id="state"><option value="down">Score ↓</option><option value="up">Score ↑</option><option value="flat">Score →</option><option value="mixed">Mixed</option></select></div>
+<script>
+const baseObs={
+RADIANCE:["Bright reflective highlights are visible across the forehead, nose, and upper cheeks.","The face appears luminous overall, though the shine is strongest in the direct sunlight."],
+HYDRATION:["The forehead and cheek areas appear glossy and smooth in several spots.","The lips show visible vertical lines and a slightly dry-looking texture."],
+EVENNESS:["There is noticeable contrast between sunlit areas and shadowed areas across the forehead, eyes, and cheeks.","Some tonal variation is visible on the forehead and central face, partly affected by the strong outdoor lighting."],
+TEXTURE:["Fine lines are visible on the forehead and around the eye area.","Skin surface texture is noticeable on the forehead and cheeks in the close-up image."],
+"UNDER-EYE":["The under-eye areas show visible shadowing, especially beneath the lower lids.","Mild creasing is visible around both under-eye areas."],
+"OVERALL VITALITY":["The face is clearly visible and front-facing, with strong brightness on the central features.","Overall appearance is affected by high-contrast sunlight and shadows across the upper face."]
+};
+const sets={
+down:{start:65,day:63,change:"2 lower visible score",summary:"The overall score is lower, but the useful question is what changed within the six dimensions. Open a dimension to compare the two observations.",next:"Review before you react.",copy:"A lower score is a signal to review the evidence, not a verdict that the routine failed.",dims:[["RADIANCE",75,"up","10 pts","The radiance signal is higher today; the visible highlights remain present."],["HYDRATION",60,"down","15 pts","Hydration is the clearest downward movement; compare today's visible dryness cues with the starting observation."],["EVENNESS",60,"flat","0 pts","The score is unchanged, so the visual signal remains broadly similar."],["TEXTURE",60,"flat","0 pts","The score is unchanged; review the Day-0 and Day-30 observations rather than assuming no change."],["UNDER-EYE",60,"flat","0 pts","The score is unchanged; the detailed observations provide the useful comparison."],["OVERALL VITALITY",60,"flat","0 pts","The score is unchanged; today's lighting and framing still form part of the visual context."]]},
+up:{start:65,day:72,change:"7 higher visible score",summary:"The overall score is higher, with movement across several dimensions. Open each dimension to see what GLOW observed at the start and today.",next:"Keep the signal going.",copy:"Continue consistently and use the next comparable check to see whether the direction holds.",dims:[["RADIANCE",82,"up","7 pts","Visible radiance is stronger today."],["HYDRATION",72,"up","12 pts","The visible hydration signal is stronger today."],["EVENNESS",64,"up","4 pts","The visible tone signal is slightly more even today."],["TEXTURE",65,"up","5 pts","Visible texture reads slightly differently today."],["UNDER-EYE",60,"flat","0 pts","The under-eye score is unchanged."],["OVERALL VITALITY",60,"flat","0 pts","The overall vitality signal is unchanged."]]},
+flat:{start:65,day:65,change:"No visible score change",summary:"The overall score is unchanged. That makes the dimension-level observations more useful than the headline score alone.",next:"Stay consistent.",copy:"A stable result gives you another reference point. Keep capture conditions comparable.",dims:[["RADIANCE",75,"flat","0 pts","The radiance score is unchanged."],["HYDRATION",60,"flat","0 pts","The hydration score is unchanged."],["EVENNESS",64,"up","2 pts","A small upward movement appears in evenness."],["TEXTURE",60,"flat","0 pts","The texture score is unchanged."],["UNDER-EYE",58,"down","2 pts","A small downward movement appears in under-eye appearance."],["OVERALL VITALITY",65,"flat","0 pts","The vitality score is unchanged."]]},
+mixed:{start:65,day:67,change:"2 higher visible score",summary:"The headline score is higher, but the dimensions move in different directions. The useful review is dimension by dimension.",next:"Focus, don't reset everything.",copy:"Keep the routine steady where appropriate and focus on the dimensions with the clearest evidence.",dims:[["RADIANCE",80,"up","5 pts","Visible radiance is stronger today."],["HYDRATION",55,"down","5 pts","The visible hydration signal is lower today."],["EVENNESS",66,"up","4 pts","Visible tone appears somewhat more even today."],["TEXTURE",58,"down","2 pts","Texture reads slightly less favourably today."],["UNDER-EYE",61,"up","1 pt","The under-eye signal is slightly higher today."],["OVERALL VITALITY",65,"flat","0 pts","The vitality score is unchanged."]]}
+};
+function escHtml(s){return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function render(k){
+ const x=sets[k];
+ document.querySelector("#start").textContent=x.start+"/100";
+ document.querySelector("#day").textContent=x.day+"/100";
+ document.querySelector("#bar1").style.width=x.start+"%";
+ document.querySelector("#bar2").style.width=x.day+"%";
+ document.querySelector("#change").textContent=x.change;
+ document.querySelector("#summary").textContent=x.summary;
+ document.querySelector(".next h3").textContent=x.next;
+ document.querySelector(".next .bodycopy").textContent=x.copy;
+ document.querySelector("#archetypeName").textContent="YOUR UNIQUE GLOW™";
+ document.querySelector("#archetypeCopy").textContent="Your starting Glow Archetype remains the reference profile for this 30-day comparison. It is not re-scored simply because your Day-30 score moved.";
+ const dims=document.querySelector("#dims");
+ dims.innerHTML=x.dims.map((d,i)=>'<div class="dim" tabindex="0" data-i="'+i+'" style="cursor:pointer"><label>'+d[0]+'</label><div class="dim-score">'+d[1]+'/100</div><div class="meta '+d[2]+'"><span class="arrow">'+(d[2]=="up"?"↑":d[2]=="down"?"↓":"→")+'</span><span>'+d[3]+'</span></div></div>').join("");
+ dims.querySelectorAll(".dim").forEach(card=>{const open=()=>showDetail(k,Number(card.dataset.i));card.onclick=open;card.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}};});
+ const today=document.querySelector("#obsDim").parentElement;
+ today.querySelectorAll(".obs").forEach(n=>n.remove());
+ document.querySelector("#obsDim").textContent="Across all six dimensions";
+ x.dims.forEach(d=>{const key=d[0];const p=document.createElement("div");p.className="obs";p.innerHTML='<strong>'+escHtml(key)+'</strong>';(baseObs[key]||[]).forEach(o=>{p.innerHTML+='<div style="margin-top:5px">'+escHtml(o)+'</div>';});today.appendChild(p);});
+ document.querySelector("#dimensionDetail").hidden=true;
+}
+function showDetail(k,i){
+ const x=sets[k].dims[i],keys=["RADIANCE","HYDRATION","EVENNESS","TEXTURE","UNDER-EYE","OVERALL VITALITY"],key=keys[i];
+ document.querySelector("#dimensionDetail").hidden=false;
+ document.querySelector("#detailTitle").textContent=key;
+ document.querySelector("#detailSummary").textContent=x[4];
+ document.querySelector("#detailBefore").innerHTML=(baseObs[key]||[]).map(o=>'<div class="obs">'+escHtml(o)+'</div>').join("");
+ document.querySelector("#detailToday").innerHTML='<div class="obs">Representative Day-30 observation: '+escHtml(x[4])+'</div>';
+ document.querySelector("#dimensionDetail").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+document.querySelector("#state").onchange=e=>render(e.target.value);
+document.querySelector("#day30Back").onclick=()=>{try{const q=new URLSearchParams(location.search);const id=String(q.get("journey")||localStorage.getItem("glow_journey_id")||"").trim().toUpperCase();if(id)localStorage.setItem("glow_journey_id",id);sessionStorage.setItem("glow_return_to_profile","1");sessionStorage.removeItem("glow_open_day30");}catch(_){}location.href="/";};
+render("down");
+</script>
+</body></html>
