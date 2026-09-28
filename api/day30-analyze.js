@@ -32,6 +32,8 @@ export default async function(req,res){
  const jq=await db.query("SELECT * FROM glow_journeys WHERE journey_id = $1 LIMIT 1",[journeyId]); const j=jq.rows[0];
  if(!j)return res.status(404).json({error:"We couldn't find that Glow Journey."});
  if(j.payment_status!=="paid")return res.status(402).json({error:"Please complete your Personal Glow Plan first."});
+ const day30AvailableAt = j.journey_started_at ? new Date(new Date(j.journey_started_at).getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+ if(!day30AvailableAt || Date.now() < day30AvailableAt.getTime()) return res.status(403).json({error:"Your Day-30 Glow Re-Check is not available yet.",day30Available:false,day30AvailableAt:day30AvailableAt?.toISOString()||null});
  if(j.day30_completed)return res.status(409).json({error:"Your included Day-30 Glow Re-Check has already been used."});
  const language=["en","fr","es","pt","de","it"].includes(String(j.language||"").toLowerCase())?String(j.language).toLowerCase():"en";
  const languageInstruction=language==="fr"?"Write visible-only observation notes in French.":language==="es"?"Write visible-only observation notes in Spanish.":language==="pt"?"Write visible-only observation notes in European Portuguese.":language==="de"?"Write visible-only observation notes in German.":language==="it"?"Write visible-only observation notes in Italian.":"Write visible-only observation notes in English.";

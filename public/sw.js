@@ -1,9 +1,9 @@
-const CACHE_NAME = 'glow-ai-pwa-v13';
+const CACHE_NAME = 'glow-ai-pwa-v21';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
-  '/app.js?v=75',
-  '/glow15.js?v=15',
+  '/app.js?v=82',
+  '/glow15.js?v=16',
   '/i18n.js?v=2'
 ];
 

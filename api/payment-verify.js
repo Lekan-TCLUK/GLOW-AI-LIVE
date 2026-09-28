@@ -1,7 +1,7 @@
-import { db, scheduler, browser, storage } from "hatchable";
+import { db } from "hatchable";
 import { incrementDailyMetric } from "../lib/glow16-intelligence.js";
 import { markAffiliatePayment } from "lib/affiliate-attribution.js";
-import { enqueueCustomerEmail, processCustomerEmail } from "lib/customer-email.js";
+// Customer PDF/email fulfilment is handled by the Stripe webhook path.
 
 export const access = "public";
 export const methods = ["POST"];
@@ -55,41 +55,9 @@ export default async function(req, res) {
     } catch (affiliateError) {
       console.error("Affiliate attribution payment update failed", affiliateError);
     }
-    if (updated.email && updated.journey_started_at && !updated.day30_completed) {
-      const reminderAt = new Date(new Date(updated.journey_started_at).getTime() + 28 * 24 * 60 * 60 * 1000);
-      if (reminderAt.getTime() > Date.now()) {
-        try { await scheduler.at(reminderAt.toISOString(), "/api/day30-reminder", { name: "day29-" + updated.journey_id, payload: { journeyId: updated.journey_id } }); } catch (scheduleError) { console.error("Day-29 reminder schedule failed", scheduleError); }
-      }
-    }
-    let emailSent = Boolean(updated.email_sent_at);
-    let pdfUrl = updated.pdf_url || null;
-    let emailError = null;
-    try {
-      if (!emailSent && updated.email) {
-        const queued = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PDF");
-        if (queued.deliveryId) {
-          const delivery = await processCustomerEmail(queued.deliveryId);
-          emailSent = Boolean(delivery?.sent);
-        } else {
-          emailSent = Boolean(queued.sent);
-        }
-      }
-      if (updated.email && emailSent) {
-        try {
-          const onboarding = await enqueueCustomerEmail(updated.journey_id, "EMAIL_PAID_ONBOARDING");
-          if (onboarding.queued && onboarding.deliveryId) await processCustomerEmail(onboarding.deliveryId);
-        } catch (onboardingError) {
-          console.error("Paid onboarding email failed", onboardingError);
-        }
-      }
-      const refreshed = (await db.query("SELECT pdf_url,email_sent_at FROM glow_journeys WHERE journey_id=$1 LIMIT 1", [journeyId])).rows[0];
-      pdfUrl = refreshed?.pdf_url || pdfUrl;
-      emailSent = emailSent || Boolean(refreshed?.email_sent_at);
-    } catch (mailError) {
-      emailError = String(mailError?.message || mailError);
-      console.error("Plan email failed", mailError);
-    }
-    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl, emailSent, emailError, language: updated.language || "en", locale: updated.locale || "en-GB" });
+    // Customer return verification is intentionally lightweight. Stripe webhook handles PDF/email fulfilment.
+    // The browser must not wait for report generation or email delivery before showing the paid Journey.
+    return res.json({ paid: true, journeyId, email: updated.email, pdfUrl: updated.pdf_url || null, emailSent: Boolean(updated.email_sent_at), language: updated.language || "en", locale: updated.locale || "en-GB" });
   } catch (error) {
     console.error("Payment verification error", error);
     return res.status(502).json({ error: "We couldn't verify the payment yet. Please refresh and try again." });
