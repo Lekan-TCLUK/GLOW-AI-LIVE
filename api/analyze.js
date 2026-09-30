@@ -10,6 +10,7 @@ import { RANKING_ENGINE_VERSION } from "../lib/engine/ranking.js";
 import { ARCHETYPE_ENGINE_VERSION } from "../lib/engine/archetypes.js";
 import { GLOW_FLOW_VERSION } from "../lib/engine/flow.js";
 import { overallBand } from "../lib/engine/status.js";
+import { recordFunnelEvent } from "../lib/funnel-events.js";
 
 export const access = "public";
 export const methods = ["POST", "OPTIONS"];
@@ -288,6 +289,7 @@ export default async function (req, res) {
     const quality = evaluatePhotoQuality(observations.quality || {});
     if (quality.status !== "PASS") {
       const status = quality.status === "REJECT" ? 422 : 409;
+      await recordFunnelEvent({eventName:"analysis_rejected",sessionId,properties:{http_status:status,quality_status:quality.status,reason_codes:quality.reason_codes,quality_gate_version:quality.version},source:"server"});
       return res.status(status).json({
         error: quality.status === "REJECT" ? "Please upload a clear, front-facing photo." : "Please retake the photo in clearer, even lighting.",
         quality_status: quality.status,
@@ -378,6 +380,7 @@ export default async function (req, res) {
       );
     }
 
+    await recordFunnelEvent({eventName:"analysis_success",sessionId,properties:{assessment_id:assessmentId||null,quality_gate_version:quality.version},source:"server"});
     return res.json(response);
   } catch (error) {
     console.error("GLOW V1 analysis error", error);

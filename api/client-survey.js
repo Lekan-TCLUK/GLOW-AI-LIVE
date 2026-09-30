@@ -1,5 +1,6 @@
 import { db } from "hatchable";
 import { incrementDailyMetric } from "../lib/glow16-intelligence.js";
+import { recordFunnelEvent } from "../lib/funnel-events.js";
 
 export const access="public";
 export const methods=["POST","OPTIONS"];
