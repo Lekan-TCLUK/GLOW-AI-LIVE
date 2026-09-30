@@ -1,8 +1,8 @@
-const CACHE_NAME = 'glow-ai-pwa-v21';
+const CACHE_NAME = 'glow-ai-pwa-v24';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
-  '/app.js?v=82',
+  '/app.js?v=83',
   '/glow15.js?v=16',
   '/i18n.js?v=2'
 ];
@@ -41,6 +41,12 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request).catch(() => caches.match('/'))
     );
+    return;
+  }
+
+  // Versioned app/i18n assets must always refresh after a deployment.
+  if (url.pathname === '/app.js' || url.pathname === '/i18n.js') {
+    const freshUrl = new URL(request.url); if (url.pathname === '/app.js') freshUrl.search = '?v=83'; if (url.pathname === '/i18n.js') freshUrl.search = '?v=3'; event.respondWith(fetch(new Request(freshUrl.toString(), {cache: 'no-store'})));
     return;
   }
 
